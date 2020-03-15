@@ -73,6 +73,8 @@ class BiLSTMEncoder(nn.Module):
 
         word_rep = self.word_drop(word_emb)
 
+        
+
 
         sorted_seq_len, permIdx = word_seq_lens.sort(0, descending=True)
         _, recover_idx = permIdx.sort(0, descending=False)
