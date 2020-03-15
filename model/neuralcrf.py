@@ -24,8 +24,8 @@ class NNCRF(nn.Module):
         self.inferencer = LinearCRF(config, print_info=print_info)
 
     @overrides
-    def forward(self, sents: torch.Tensor,
-                    word_seq_lens: torch.Tensor,
+    def forward(self, sent_emb_tensor: torch.Tensor,
+                    sent_seq_lens: torch.Tensor,
                     batch_context_emb: torch.Tensor,
                     chars: torch.Tensor,
                     char_seq_lens: torch.Tensor,
@@ -41,12 +41,13 @@ class NNCRF(nn.Module):
         :return: the total negative log-likelihood loss
         """
         # print("sents: ",sents)
-        lstm_scores = self.encoder(sents, word_seq_lens, batch_context_emb, chars, char_seq_lens)
-        batch_size = sents.size(0)
-        sent_len = sents.size(1)
+        lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens)
+        # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
+        batch_size = sent_emb_tensor.size(0)
+        sent_len = sent_emb_tensor.size(1)
         maskTemp = torch.arange(1, sent_len + 1, dtype=torch.long).view(1, sent_len).expand(batch_size, sent_len).to(self.device)
-        mask = torch.le(maskTemp, word_seq_lens.view(batch_size, 1).expand(batch_size, sent_len)).to(self.device)
-        unlabed_score, labeled_score =  self.inferencer(lstm_scores, word_seq_lens, tags, mask)
+        mask = torch.le(maskTemp, sent_seq_lens.view(batch_size, 1).expand(batch_size, sent_len)).to(self.device)
+        unlabed_score, labeled_score =  self.inferencer(lstm_scores, sent_seq_lens, tags, mask)
         return unlabed_score - labeled_score
 
     def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:

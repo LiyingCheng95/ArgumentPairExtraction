@@ -47,8 +47,8 @@ class BiLSTMEncoder(nn.Module):
         self.hidden2tag = nn.Linear(final_hidden_dim, self.label_size).to(self.device)
 
     @overrides
-    def forward(self, word_emb_tensor: torch.Tensor,
-                       word_seq_lens: torch.Tensor,
+    def forward(self, sent_emb_tensor: torch.Tensor,
+                       sent_seq_lens: torch.Tensor,
                        batch_context_emb: torch.Tensor,
                        char_inputs: torch.Tensor,
                        char_seq_lens: torch.Tensor) -> torch.Tensor:
@@ -69,16 +69,15 @@ class BiLSTMEncoder(nn.Module):
         #     char_features = self.char_feature(char_inputs, char_seq_lens)
         #     word_emb = torch.cat([word_emb, char_features], 2)
 
-        word_emb = word_emb_tensor
+        sent_rep = sent_emb_tensor
 
-        word_rep = self.word_drop(word_emb)
+        # word_rep = self.word_drop(word_emb)
 
-        
+        # print("word rep length: ",word_rep.shape)
 
-
-        sorted_seq_len, permIdx = word_seq_lens.sort(0, descending=True)
+        sorted_seq_len, permIdx = sent_seq_lens.sort(0, descending=True)
         _, recover_idx = permIdx.sort(0, descending=False)
-        sorted_seq_tensor = word_rep[permIdx]
+        sorted_seq_tensor = sent_rep[permIdx]
 
         packed_words = pack_padded_sequence(sorted_seq_tensor, sorted_seq_len, True)
         lstm_out, _ = self.lstm(packed_words, None)

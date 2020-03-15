@@ -146,14 +146,14 @@ class Config:
 
         # extract char on train, dev, test
         for inst in train_insts + dev_insts + test_insts:
-            for word in inst.input.words:
-                if word not in self.word2idx:
-                    self.word2idx[word] = len(self.word2idx)
-                    self.idx2word.append(word)
+            for sent in inst.input.sents:
+                if sent not in self.word2idx:
+                    self.word2idx[sent] = len(self.word2idx)
+                    self.idx2word.append(sent)
         # extract char only on train (doesn't matter for dev and test)
         for inst in train_insts:
-            for word in inst.input.words:
-                for c in word:
+            for sent in inst.input.sents:
+                for c in sent:
                     if c not in self.char2idx:
                         self.char2idx[c] = len(self.idx2char)
                         self.idx2char.append(c)
@@ -236,17 +236,17 @@ class Config:
         :return:
         """
         for inst in insts:
-            words = inst.input.words
+            sents = inst.input.sents
             inst.word_ids = []
             inst.char_ids = []
             inst.output_ids = [] if inst.output else None
-            for word in words:
-                if word in self.word2idx:
-                    inst.word_ids.append(self.word2idx[word])
+            for sent in sents:
+                if sent in self.word2idx:
+                    inst.word_ids.append(self.word2idx[sent])
                 else:
                     inst.word_ids.append(self.word2idx[self.UNK])
                 char_id = []
-                for c in word:
+                for c in sent:
                     if c in self.char2idx:
                         char_id.append(self.char2idx[c])
                     else:

@@ -38,9 +38,10 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     """
     batching these instances together and return tensors. The seq_tensors for word and char contain their word id and char id.
-    :return 
-        word_seq_tensor: Shape: (batch_size, max_seq_length)
-        word_seq_len: Shape: (batch_size), the length of each sentence in a batch.
+    :return
+        sent_emb_tensor: Shape: (batch_size, max_seq_len, emb_size)
+        # word_seq_tensor: Shape: (batch_size, max_seq_length)
+        sent_seq_len: Shape: (batch_size), the length of each paragraph in a batch.
         context_emb_tensor: Shape: (batch_size, max_seq_length, context_emb_size)
         char_seq_tensor: Shape: (batch_size, max_seq_len, max_char_seq_len)
         char_seq_len: Shape: (batch_size, max_seq_len), 
@@ -50,11 +51,11 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     batch_data = insts
     # probably no need to sort because we will sort them in the model instead.
     # batch_data = sorted(insts, key=lambda inst: len(inst.input.words), reverse=True) ##object-based not direct copy
-    word_seq_len = torch.LongTensor(list(map(lambda inst: len(inst.input.words), batch_data)))
-    max_seq_len = word_seq_len.max()
+    sent_seq_len = torch.LongTensor(list(map(lambda inst: len(inst.input.sents), batch_data)))
+    max_seq_len = sent_seq_len.max()
 
     # NOTE: Use 1 here because the CharBiLSTM accepts
-    char_seq_len = torch.LongTensor([list(map(len, inst.input.words)) + [1] * (int(max_seq_len) - len(inst.input.words)) for inst in batch_data])
+    char_seq_len = torch.LongTensor([list(map(len, inst.input.sents)) + [1] * (int(max_seq_len) - len(inst.input.sents)) for inst in batch_data])
     max_char_seq_len = char_seq_len.max()
 
     context_emb_tensor = None
@@ -66,36 +67,39 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     # print('emb_size: ',emb_size)
     emb_size = 768
 
-    word_seq_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
+    # word_seq_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
     label_seq_tensor =  torch.zeros((batch_size, max_seq_len), dtype=torch.long)
     char_seq_tensor = torch.zeros((batch_size, max_seq_len, max_char_seq_len), dtype=torch.long)
 
-    word_emb_tensor = torch.zeros((batch_size, max_seq_len, emb_size))
+    sent_emb_tensor = torch.zeros((batch_size, max_seq_len, emb_size), dtype=torch.float32)
     # input = torch.zeros((batch_size, num_sents, emb_size))
 
 
     for idx in range(batch_size):
 
 
-        word_seq_tensor[idx, :word_seq_len[idx]] = torch.LongTensor(batch_data[idx].word_ids)
+        # word_seq_tensor[idx, :word_seq_len[idx]] = torch.LongTensor(batch_data[idx].word_ids)
         if batch_data[idx].output_ids:
-            label_seq_tensor[idx, :word_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
+            label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
         if config.context_emb != ContextEmb.none:
-            context_emb_tensor[idx, :word_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
+            context_emb_tensor[idx, :sent_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
 
-        for word_idx in range(word_seq_len[idx]):
-            word_emb_tensor[idx, word_idx, :emb_size] = torch.LongTensor(batch_data[idx].vec[word_idx])
-            char_seq_tensor[idx, word_idx, :char_seq_len[idx, word_idx]] = torch.LongTensor(batch_data[idx].char_ids[word_idx])
-        for wordIdx in range(word_seq_len[idx], max_seq_len):
-            char_seq_tensor[idx, wordIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
+        for sent_idx in range(sent_seq_len[idx]):
+            sent_emb_tensor[idx, sent_idx, :emb_size] = torch.Tensor(batch_data[idx].vec[sent_idx])
+            # print('sent_emb_tensor', sent_emb_tensor[idx, sent_idx, 0])
+            char_seq_tensor[idx, sent_idx, :char_seq_len[idx, sent_idx]] = torch.LongTensor(batch_data[idx].char_ids[sent_idx])
+        for sentIdx in range(sent_seq_len[idx], max_seq_len):
+            char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
 
-    word_seq_tensor = word_seq_tensor.to(config.device)
+    # word_seq_tensor = word_seq_tensor.to(config.device)
     label_seq_tensor = label_seq_tensor.to(config.device)
     char_seq_tensor = char_seq_tensor.to(config.device)
-    word_seq_len = word_seq_len.to(config.device)
+    sent_seq_len = sent_seq_len.to(config.device)
     char_seq_len = char_seq_len.to(config.device)
 
-    return word_emb_tensor, word_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor
+    sent_emb_tensor = sent_emb_tensor.to(config.device)
+
+    return sent_emb_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:
@@ -127,7 +131,7 @@ def load_elmo_vec(file: str, insts: List[Instance]):
     for vec, inst in zip(all_vecs, insts):
         inst.elmo_vec = vec
         size = vec.shape[1]
-        assert(vec.shape[0] == len(inst.input.words))
+        assert(vec.shape[0] == len(inst.input.sents))
     return size
 
 
@@ -151,10 +155,10 @@ def write_results(filename: str, insts):
     f = open(filename, 'w', encoding='utf-8')
     for inst in insts:
         for i in range(len(inst.input)):
-            words = inst.input.ori_words
+            sents = inst.input.ori_sents
             output = inst.output
             prediction = inst.prediction
             assert len(output) == len(prediction)
-            f.write("{}\t{}\t{}\t{}\n".format(i, words[i], output[i], prediction[i]))
+            f.write("{}\t{}\t{}\t{}\n".format(i, sents[i], output[i], prediction[i]))
         f.write("\n")
     f.close()

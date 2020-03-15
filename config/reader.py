@@ -6,7 +6,6 @@ from tqdm import tqdm
 from common import Sentence, Instance
 from typing import List
 from bert_serving.client import BertClient
-# import sister
 import re
 
 
@@ -24,42 +23,36 @@ class Reader:
         print("Reading file: " + file)
         insts = []
 
-        # embedder = sister.MeanEmbedding(lang='en')
         with open(file, 'r', encoding='utf-8') as f:
-            words = []
-            ori_words = []
+            sents = []
+            ori_sents = []
             labels = []
             vecs = []
             for line in tqdm(f.readlines()):
                 line = line.rstrip()
                 if line == "":
-                    inst = Instance(Sentence(words, ori_words), labels, vecs)
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs)
                     ##read vector
 
                     insts.append(inst)
-                    words = []
-                    ori_words = []
+                    sents = []
+                    ori_sents = []
                     labels = []
+                    vecs = []
                     if len(insts) == number:
                         break
                     continue
                 ls = line.split('\t')
-                word, label = ls[0],ls[2]
-                ori_words.append(word)
+                sent, label = ls[0],ls[2]
+                ori_sents.append(sent)
                 # if self.digit2zero:
-                #     word = re.sub('\d', '0', word) # replace digit with 0.
-                words.append(word)
-                self.vocab.add(word)
+                #     sent = re.sub('\d', '0', sent) # replace digit with 0.
+                sents.append(sent)
+                self.vocab.add(sent)
 
                 bc = BertClient()
-                tmp = []
-                tmp.append(word)
-                vec = bc.encode(list(tmp))
+                vec = bc.encode([sent])
                 vecs.append(vec[0][0])
-
-                # vec=embedder(word)
-                # vecs.append(vec)
-                # print(vec)
 
                 labels.append(label)
         print("number of sentences: {}".format(len(insts)))
