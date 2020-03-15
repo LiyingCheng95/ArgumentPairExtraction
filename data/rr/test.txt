@@ -1,0 +1,13 @@
+SOCCER	y	O
+-	y	O
+JAPAN	y	B-LOC
+GET	y	O
+LUCKY	y	O
+WIN	y	O
+,	y	O
+CHINA	y	B-PER
+IN	y	O
+SURPRISE	y	O
+DEFEAT	y	O
+.	y	O
+
