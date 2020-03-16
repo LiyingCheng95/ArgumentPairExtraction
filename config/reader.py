@@ -7,6 +7,7 @@ from common import Sentence, Instance
 from typing import List
 from bert_serving.client import BertClient
 import re
+import pickle
 
 
 class Reader:
@@ -19,18 +20,24 @@ class Reader:
         self.digit2zero = digit2zero
         self.vocab = set()
 
-    def read_txt(self, file: str, number: int = -1) -> List[Instance]:
+    def read_txt(self, file: str, number: int = 5) -> List[Instance]:
         print("Reading file: " + file)
         insts = []
 
+        f_vec = open( file[:8]+'vec_'+file[8:], 'rb')
+        all_vecs = pickle.load(f_vec)
+        f_vec.close
+
         with open(file, 'r', encoding='utf-8') as f:
+
             sents = []
             ori_sents = []
             labels = []
-            vecs = []
+            # vecs = []
             for line in tqdm(f.readlines()):
                 line = line.rstrip()
                 if line == "":
+                    vecs=all_vecs[len(insts)]
                     inst = Instance(Sentence(sents, ori_sents), labels, vecs)
                     ##read vector
 
@@ -38,7 +45,7 @@ class Reader:
                     sents = []
                     ori_sents = []
                     labels = []
-                    vecs = []
+                    # vecs = []
                     if len(insts) == number:
                         break
                     continue
@@ -50,9 +57,9 @@ class Reader:
                 sents.append(sent)
                 self.vocab.add(sent)
 
-                bc = BertClient()
-                vec = bc.encode([sent])
-                vecs.append(vec[0][0])
+                # bc = BertClient()
+                # vec = bc.encode([sent])
+                # vecs.append(vec[0][0])
 
                 labels.append(label)
         print("number of sentences: {}".format(len(insts)))
