@@ -1,4 +1,6 @@
 import csv
+import pickle
+
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -16,7 +18,7 @@ def sep_sent(s):
 
 def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 	bio=0
-	# vecs=[]
+	vecs=[]
 	sents=[]
 	# add_to_next_i = ''
 	for index,i in enumerate(corpus):
@@ -24,18 +26,20 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 		temp=''
 		# temp.append(index)
 		processed_i = str(i).replace('\n','[line_break_token]').replace('\t','[tab_token]')
-		# if processed_i.strip() == '':
-		# 	print(processed_i)
-		# 	# add_to_next_i = processed_i
-		# 	continue
-		
-		try:
-			bc = BertClient()
-			vec = bc.encode([processed_i])
-			vecs.append(vec[0][0])
-			sents.append(processed_i)
-		except:
+		if processed_i.strip() == '':
+			print(processed_i)
+			# add_to_next_i = processed_i
 			continue
+		
+		# try:
+		# 	bc = BertClient()
+		# 	vec = bc.encode([processed_i])
+		# 	vecs.append(vec[0][0])
+		# 	sents.append(processed_i)
+		# except:
+		# 	continue
+
+		sents.append(processed_i)
 
 		# temp+=vec
 		# temp+='\t'
@@ -76,8 +80,6 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 			temp+='0'
 			temp+='\n'
 			outputfile.write(temp)
-	return vecs, sents
-
 
 
 def main():
@@ -90,8 +92,8 @@ def main():
 			with open('file1.csv') as csvfile1:
 				file1 = csv.reader(csvfile1, delimiter=',') 
 
-				vecs=[]
-				sents=[]
+				# vecs=[]
+				# # sents=[]
 			
 				for line in file1:
 
@@ -102,28 +104,34 @@ def main():
 					review=line[1][22:sep-2]
 					reply=line[1][sep+21:-1]
 					review=sep_sent(review)
-					rvw_vecs,rvw_sents = tagging_sequence(outputfile,review,arguments_review,'Review')
+					tagging_sequence(outputfile,review,arguments_review,'Review')
 					reply=sep_sent(reply)
-					rpl_vecs,rpl_sents = tagging_sequence(outputfile,reply,arguments_reply,'Reply')
+					tagging_sequence(outputfile,reply,arguments_reply,'Reply')
 					outputfile.write('\n')
 
-
-					vecs+=rvw_vecs
-					vecs+=rpl_vecs
-					sents+=rvw_sents
-					sents+=rpl_sents
-
-				f_vecs=open('vecs','wb')
-				pickle.dump(vecs,f_vecs)
-				f_vecs.close()
-
-				f_sents=open('sents','wb')
-				pickle.dump(sents,f_sents)
-				f_sents.close()
+					# sents=rvw_sents+rpl_sents
+					# print('len of sents: ', len(sents))
+					# bc = BertClient()
+					# vec = bc.encode(sents)
+					# vecs.append([vec[i][0] for i in range(len(vec))])
+					# print('len of vec: ',len(vecs[-1]))
 
 
+				# f_vecs=open('vecs','wb')
+				# pickle.dump(vecs,f_vecs)
+				# f_vecs.close()
 
-main()	   
+
+def calc_vec(sents):
+	sents=sents.split('\n')
+	bc = BertClient()
+	vec = bc.encode([sents[i].split('\t')[0] for i in range(len(sents))])
+	return vec
+
+
+
+
+# main()
 with open("ReviewRebuttal.txt","r") as full_data:
 	full_data=full_data.read().split('\n\n')
 	print(len(full_data))
@@ -139,19 +147,40 @@ with open("ReviewRebuttal.txt","r") as full_data:
 	test_data = full_data[split_2:]
 
 	train=open('train.txt','w')
+	vecs=[]
 	for i in train_data:
 		train.write(i+'\n\n')
+		vec=calc_vec(i)
+		vecs.append([vec[i][0] for i in range(len(vec))])
+		print('len of vec: ', len(vecs[-1]))
+	train_vecs = open('train_vecs', 'wb')
+	pickle.dump(vecs, train_vecs)
+	train_vecs.close()
 	train.close()
 
 	dev=open('dev.txt','w')
+	vecs = []
 	for i in dev_data:
 		dev.write(i+'\n\n')
+		vec = calc_vec(i)
+		vecs.append([vec[i][0] for i in range(len(vec))])
+		print('len of vec: ', len(vecs[-1]))
+	dev_vecs = open('dev_vecs', 'wb')
+	pickle.dump(vecs, dev_vecs)
+	dev_vecs.close()
 	dev.close()
 
 	test=open('test.txt','w')
+	vecs = []
 	for i in test_data:
 		test.write(i+'\n\n')
+		vec = calc_vec(i)
+		vecs.append([vec[i][0] for i in range(len(vec))])
+		print('len of vec: ', len(vecs[-1]))
+	test_vecs = open('test_vecs', 'wb')
+	pickle.dump(vecs, test_vecs)
+	test_vecs.close()
 	test.close()
 
-bert-serving-start -model_dir ./tmp/cased_L-12_H-768_A-12/ -pooling_strategy NONE
+
 
