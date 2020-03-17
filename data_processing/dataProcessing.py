@@ -43,6 +43,8 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 
 		# temp+=vec
 		# temp+='\t'
+		temp+=category
+		temp+=' '
 		temp+=processed_i
 		# add_to_next_i=''
 
@@ -59,11 +61,13 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 					temp+='B-'
 					temp+=category
 					temp+='\t'
+					temp+='B-'
 					bio=1
 				else:
 					temp+='I-'
 					temp+=category
 					temp+='\t'
+					temp+='I-'
 				# temp+='\t'
 				# temp+=category
 				temp+=j[2]
@@ -77,7 +81,7 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 			bio=0
 			# temp+='\t'
 			# temp+=category
-			temp+='0'
+			temp+='O'
 			temp+='\n'
 			outputfile.write(temp)
 
@@ -131,7 +135,7 @@ def calc_vec(sents):
 
 
 
-# main()
+main()
 with open("ReviewRebuttal.txt","r") as full_data:
 	full_data=full_data.read().split('\n\n')
 	print(len(full_data))
