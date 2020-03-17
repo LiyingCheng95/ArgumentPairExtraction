@@ -21,6 +21,7 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 	vecs=[]
 	sents=[]
 	# add_to_next_i = ''
+	j2tag = 0
 	for index,i in enumerate(corpus):
 		flag=0
 		temp=''
@@ -51,13 +52,13 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 		temp+='\t'
 		i=str(i).replace('\n','')
 
-		
+
 		for j in arguments_corpus:
 			# print("j: ",j[1])
 			# print("i: ",i)
 			
 			if i in j[1] and i!='':
-				if bio==0:
+				if j2tag!=j[2]:
 					temp+='B-'
 					temp+=category
 					temp+='\t'
@@ -68,9 +69,11 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 					temp+=category
 					temp+='\t'
 					temp+='I-'
+
 				# temp+='\t'
 				# temp+=category
 				temp+=j[2]
+				j2tag=j[2]
 				temp+='\n'
 				outputfile.write(temp)
 				flag=1
