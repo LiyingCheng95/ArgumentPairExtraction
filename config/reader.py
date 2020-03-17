@@ -50,7 +50,7 @@ class Reader:
                         break
                     continue
                 ls = line.split('\t')
-                sent, label = ls[0],ls[2]
+                sent, label = ls[0],ls[1]
                 ori_sents.append(sent)
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.

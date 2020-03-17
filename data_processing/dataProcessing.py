@@ -174,8 +174,11 @@ with open("ReviewRebuttal.txt","r") as full_data:
 	train=open('train.txt','w')
 	vecs=[]
 	for i in train_data:
-		train.write(i+'\n\n')
-		vec=calc_vec(i)
+		try:
+			vec=calc_vec(i)
+		except:
+			continue
+		train.write(i + '\n\n')
 		vecs.append([vec[i][0] for i in range(len(vec))])
 		print('len of vec: ', len(vecs[-1]))
 	train_vecs = open('train_vecs', 'wb')
