@@ -44,8 +44,8 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 
 		# temp+=vec
 		# temp+='\t'
-		temp+=category
-		temp+=' '
+		# temp+=category
+		# temp+=' '
 		temp+=processed_i
 		# add_to_next_i=''
 
@@ -70,10 +70,11 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 					temp+='\t'
 					temp+='I-'
 
-				# temp+='\t'
-				# temp+=category
+
 				temp+=j[2]
 				j2tag=j[2]
+				temp += '\t'
+				temp += category
 				temp+='\n'
 				outputfile.write(temp)
 				flag=1
@@ -82,9 +83,10 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 			temp+='O'
 			temp+='\t'
 			bio=0
-			# temp+='\t'
-			# temp+=category
+
 			temp+='O'
+			temp += '\t'
+			temp += category
 			temp+='\n'
 			outputfile.write(temp)
 

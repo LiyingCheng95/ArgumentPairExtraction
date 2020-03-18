@@ -25,6 +25,7 @@ class NNCRF(nn.Module):
 
     @overrides
     def forward(self, sent_emb_tensor: torch.Tensor,
+                    type_id_tensor: torch.Tensor,
                     sent_seq_lens: torch.Tensor,
                     batch_context_emb: torch.Tensor,
                     chars: torch.Tensor,
@@ -41,7 +42,7 @@ class NNCRF(nn.Module):
         :return: the total negative log-likelihood loss
         """
         # print("sents: ",sents)
-        lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens)
+        lstm_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens)
         # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
         batch_size = sent_emb_tensor.size(0)
         sent_len = sent_emb_tensor.size(1)
@@ -50,13 +51,14 @@ class NNCRF(nn.Module):
         unlabed_score, labeled_score =  self.inferencer(lstm_scores, sent_seq_lens, tags, mask)
         return unlabed_score - labeled_score
 
-    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Decode the batch input
         :param batchInput:
         :return:
         """
-        wordSeqTensor, wordSeqLengths, batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor = batchInput
-        features = self.encoder(wordSeqTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths)
+        wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor = batchInput
+        features = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths)
         bestScores, decodeIdx = self.inferencer.decode(features, wordSeqLengths)
+        # print(bestScores, decodeIdx)
         return bestScores, decodeIdx

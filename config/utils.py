@@ -74,6 +74,8 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     sent_emb_tensor = torch.zeros((batch_size, max_seq_len, emb_size), dtype=torch.float32)
     # input = torch.zeros((batch_size, num_sents, emb_size))
 
+    type_id_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
+
 
     for idx in range(batch_size):
 
@@ -81,11 +83,13 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
         # word_seq_tensor[idx, :word_seq_len[idx]] = torch.LongTensor(batch_data[idx].word_ids)
         if batch_data[idx].output_ids:
             label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
+            type_id_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].type)
         if config.context_emb != ContextEmb.none:
             context_emb_tensor[idx, :sent_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
 
         for sent_idx in range(sent_seq_len[idx]):
             sent_emb_tensor[idx, sent_idx, :emb_size] = torch.Tensor(batch_data[idx].vec[sent_idx])
+
             # print('sent_emb_tensor', sent_emb_tensor[idx, sent_idx, 0])
             char_seq_tensor[idx, sent_idx, :char_seq_len[idx, sent_idx]] = torch.LongTensor(batch_data[idx].char_ids[sent_idx])
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
@@ -98,8 +102,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     char_seq_len = char_seq_len.to(config.device)
 
     sent_emb_tensor = sent_emb_tensor.to(config.device)
+    type_id_tensor = type_id_tensor.to(config.device)
 
-    return sent_emb_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor
+    return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:

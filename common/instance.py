@@ -9,7 +9,7 @@ class Instance:
     This class is the basic Instance for a datasample
     """
 
-    def __init__(self, input: Sentence, output: List[str] = None, vec: List[List] = None) -> None:
+    def __init__(self, input: Sentence, output: List[str] = None, vec: List[List] = None, type: List[List] = None) -> None:
         """
         Constructor for the instance.
         :param input: sentence containing the words
@@ -22,6 +22,7 @@ class Instance:
         self.char_ids = None
         self.output_ids = None
         self.vec = vec
+        self.type = type
 
     def __len__(self):
         return len(self.input)

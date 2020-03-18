@@ -31,6 +31,8 @@ class BiLSTMEncoder(nn.Module):
         self.word_embedding = nn.Embedding.from_pretrained(torch.FloatTensor(config.word_embedding), freeze=False).to(self.device)
         self.word_drop = nn.Dropout(config.dropout).to(self.device)
 
+        self.type_embedding = nn.Embedding(2,20).to(self.device)
+
         if print_info:
             print("[Model Info] Input size to LSTM: {}".format(self.input_size))
             print("[Model Info] LSTM Hidden Size: {}".format(config.hidden_dim))
@@ -48,10 +50,11 @@ class BiLSTMEncoder(nn.Module):
 
     @overrides
     def forward(self, sent_emb_tensor: torch.Tensor,
-                       sent_seq_lens: torch.Tensor,
-                       batch_context_emb: torch.Tensor,
-                       char_inputs: torch.Tensor,
-                       char_seq_lens: torch.Tensor) -> torch.Tensor:
+                      type_id_tensor: torch.Tensor,
+                      sent_seq_lens: torch.Tensor,
+                      batch_context_emb: torch.Tensor,
+                      char_inputs: torch.Tensor,
+                      char_seq_lens: torch.Tensor) -> torch.Tensor:
         """
         Encoding the input with BiLSTM
         :param word_seq_tensor: (batch_size, sent_len)   NOTE: The word seq actually is already ordered before come here.
@@ -68,12 +71,16 @@ class BiLSTMEncoder(nn.Module):
         # if self.use_char:
         #     char_features = self.char_feature(char_inputs, char_seq_lens)
         #     word_emb = torch.cat([word_emb, char_features], 2)
+        # print(type_id_tensor)
+        type_emb = self.type_embedding(type_id_tensor)
 
-        sent_rep = sent_emb_tensor
+        # sent_rep = sent_emb_tensor
+        sent_rep = torch.cat([sent_emb_tensor,type_emb],2)
 
-        # word_rep = self.word_drop(word_emb)
 
-        # print("word rep length: ",word_rep.shape)
+        sent_rep = self.word_drop(sent_rep)
+
+        # print("word rep length: ",sent_rep.shape)
 
         sorted_seq_len, permIdx = sent_seq_lens.sort(0, descending=True)
         _, recover_idx = permIdx.sort(0, descending=False)

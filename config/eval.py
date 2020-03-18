@@ -50,6 +50,8 @@ def evaluate_batch_insts(batch_insts: List[Instance],
     word_seq_lens = word_seq_lens.tolist()
     for idx in range(len(batch_pred_ids)):
         length = word_seq_lens[idx]
+        # print(batch_gold_ids[idx])
+        # print(length)
         output = batch_gold_ids[idx][:length].tolist()
         prediction = batch_pred_ids[idx][:length].tolist()
         prediction = prediction[::-1]

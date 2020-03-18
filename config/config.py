@@ -183,6 +183,9 @@ class Config:
             for word in self.word2idx:
                 self.word_embedding[self.word2idx[word], :] = np.random.uniform(-scale, scale, [1, self.embedding_dim])
 
+
+
+
     def build_label_idx(self, insts: List[Instance]) -> None:
         """
         Build the mapping from label to index and index to labels.

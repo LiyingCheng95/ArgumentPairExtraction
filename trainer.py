@@ -35,7 +35,7 @@ def parse_arguments(parser):
     parser.add_argument('--dataset', type=str, default="rr")
     parser.add_argument('--embedding_file', type=str, default="data/glove.6B.100d.txt",
                         help="we will be using random embeddings if file do not exist")
-    parser.add_argument('--embedding_dim', type=int, default=768)
+    parser.add_argument('--embedding_dim', type=int, default=788)
     parser.add_argument('--optimizer', type=str, default="adam")
     parser.add_argument('--learning_rate', type=float, default=0.01)  ##only for sgd now
     parser.add_argument('--momentum', type=float, default=0.0)
@@ -153,7 +153,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     for batch in batch_insts_ids:
         one_batch_insts = insts[batch_id * batch_size:(batch_id + 1) * batch_size]
         batch_max_scores, batch_max_ids = model.decode(batch)
-        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-1], batch[1], config.idx2labels)
+        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-1], batch[2], config.idx2labels)
         batch_id += 1
     p, total_predict, total_entity = metrics[0], metrics[1], metrics[2]
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0

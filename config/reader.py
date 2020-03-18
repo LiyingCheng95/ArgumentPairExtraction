@@ -19,6 +19,7 @@ class Reader:
         """
         self.digit2zero = digit2zero
         self.vocab = set()
+        self.type_vocab = {'Review', 'Reply'}
 
     def read_txt(self, file: str, number: int = 5) -> List[Instance]:
         print("Reading file: " + file)
@@ -33,25 +34,30 @@ class Reader:
             sents = []
             ori_sents = []
             labels = []
-            # vecs = []
+            types = []
             for line in tqdm(f.readlines()):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
-                    inst = Instance(Sentence(sents, ori_sents), labels, vecs)
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types)
                     ##read vector
 
                     insts.append(inst)
                     sents = []
                     ori_sents = []
                     labels = []
-                    # vecs = []
+                    types = []
                     if len(insts) == number:
                         break
                     continue
                 ls = line.split('\t')
-                sent, label = ls[0],ls[1]
+                sent, label, type = ls[0],ls[1],ls[-1]
                 ori_sents.append(sent)
+                if type == 'Review':
+                    type_id = 0
+                else:
+                    type_id = 1
+                types.append(type_id)
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.
                 sents.append(sent)
