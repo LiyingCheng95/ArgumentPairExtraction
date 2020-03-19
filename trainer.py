@@ -35,7 +35,7 @@ def parse_arguments(parser):
     parser.add_argument('--dataset', type=str, default="rr")
     parser.add_argument('--embedding_file', type=str, default="data/glove.6B.100d.txt",
                         help="we will be using random embeddings if file do not exist")
-    parser.add_argument('--embedding_dim', type=int, default=788)
+    parser.add_argument('--embedding_dim', type=int, default=868)
     parser.add_argument('--optimizer', type=str, default="adam")
     parser.add_argument('--learning_rate', type=float, default=0.01)  ##only for sgd now
     parser.add_argument('--momentum', type=float, default=0.0)

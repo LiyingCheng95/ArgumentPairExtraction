@@ -101,7 +101,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     sent_seq_len = sent_seq_len.to(config.device)
     char_seq_len = char_seq_len.to(config.device)
 
-    sent_emb_tensor = sent_emb_tensor.to(config.device)
+    # sent_emb_tensor = sent_emb_tensor.to(config.device)
     type_id_tensor = type_id_tensor.to(config.device)
 
     return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor

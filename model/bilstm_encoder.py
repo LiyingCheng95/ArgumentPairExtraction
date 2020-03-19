@@ -31,7 +31,7 @@ class BiLSTMEncoder(nn.Module):
         self.word_embedding = nn.Embedding.from_pretrained(torch.FloatTensor(config.word_embedding), freeze=False).to(self.device)
         self.word_drop = nn.Dropout(config.dropout).to(self.device)
 
-        self.type_embedding = nn.Embedding(2,20).to(self.device)
+        self.type_embedding = nn.Embedding(2,100).to(self.device)
 
         if print_info:
             print("[Model Info] Input size to LSTM: {}".format(self.input_size))
@@ -72,6 +72,7 @@ class BiLSTMEncoder(nn.Module):
         #     char_features = self.char_feature(char_inputs, char_seq_lens)
         #     word_emb = torch.cat([word_emb, char_features], 2)
         # print(type_id_tensor)
+        sent_emb_tensor = sent_emb_tensor.to(self.device)
         type_emb = self.type_embedding(type_id_tensor)
 
         # sent_rep = sent_emb_tensor
