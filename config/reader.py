@@ -51,7 +51,11 @@ class Reader:
                         break
                     continue
                 ls = line.split('\t')
-                sent, label, type = ls[0],ls[1],ls[-1]
+                if ls[1]=='O':
+                    sent, label, type = ls[0], ls[1], ls[-1]
+                else:
+                    sent, label, type = ls[0], ls[1][:2] + '0', ls[-1]
+
                 ori_sents.append(sent)
                 if type == 'Review':
                     type_id = 0
