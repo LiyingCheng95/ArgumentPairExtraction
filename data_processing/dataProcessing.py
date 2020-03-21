@@ -140,7 +140,7 @@ def calc_vec(sents):
 
 
 
-main()
+# main()
 with open("ReviewRebuttal.txt","r") as full_data:
 	full_data=full_data.read().split('\n\n')
 	print(len(full_data))
@@ -162,7 +162,7 @@ with open("ReviewRebuttal.txt","r") as full_data:
 		vec = calc_vec(i)
 		vecs.append([vec[i][0] for i in range(len(vec))])
 		print('len of vec: ', len(vecs[-1]))
-	dev_vecs = open('dev_vecs', 'wb')
+	dev_vecs = open('vec_dev.txt', 'wb')
 	pickle.dump(vecs, dev_vecs)
 	dev_vecs.close()
 	dev.close()
@@ -174,7 +174,7 @@ with open("ReviewRebuttal.txt","r") as full_data:
 		vec = calc_vec(i)
 		vecs.append([vec[i][0] for i in range(len(vec))])
 		print('len of vec: ', len(vecs[-1]))
-	test_vecs = open('test_vecs', 'wb')
+	test_vecs = open('vec_test.txt', 'wb')
 	pickle.dump(vecs, test_vecs)
 	test_vecs.close()
 	test.close()
@@ -190,7 +190,7 @@ with open("ReviewRebuttal.txt","r") as full_data:
 		train.write(i + '\n\n')
 		vecs.append([vec[i][0] for i in range(len(vec))])
 		print('len of vec: ', len(vecs[-1]))
-	train_vecs = open('train_vecs', 'wb')
+	train_vecs = open('vec_train.txt', 'wb')
 	pickle.dump(vecs, train_vecs)
 	train_vecs.close()
 	train.close()
