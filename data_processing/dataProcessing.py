@@ -137,63 +137,98 @@ def calc_vec(sents):
 	vec = bc.encode([sents[i].split('\t')[0] for i in range(len(sents))])
 	return vec
 
+def sep_data():
+	with open("ReviewRebuttal.txt", "r") as full_data:
+		full_data = full_data.read().split('\n\n')
+		print(len(full_data))
+		full_data.sort()  # make sure that the filenames have a fixed order before shuffling
+		random.seed(230)
+		random.shuffle(full_data)  # shuffles the ordering of filenames (deterministic given the chosen seed)
 
+		split_1 = int(0.8 * len(full_data))
+		split_2 = int(0.9 * len(full_data))
+		print(split_1, split_2)
+		train_data = full_data[:split_1]
+		dev_data = full_data[split_1:split_2]
+		test_data = full_data[split_2:]
 
+		dev = open('dev.txt', 'w')
+		vecs = []
+		for i in dev_data:
+			dev.write(i + '\n\n')
+			vec = calc_vec(i)
+			vecs.append([vec[i][0] for i in range(len(vec))])
+			print('len of vec: ', len(vecs[-1]))
+		dev_vecs = open('vec_dev.txt', 'wb')
+		pickle.dump(vecs, dev_vecs)
+		dev_vecs.close()
+		dev.close()
+
+		test = open('test.txt', 'w')
+		vecs = []
+		for i in test_data:
+			test.write(i + '\n\n')
+			vec = calc_vec(i)
+			vecs.append([vec[i][0] for i in range(len(vec))])
+			print('len of vec: ', len(vecs[-1]))
+		test_vecs = open('vec_test.txt', 'wb')
+		pickle.dump(vecs, test_vecs)
+		test_vecs.close()
+		test.close()
+
+		train = open('train.txt', 'w')
+		vecs = []
+		for i in train_data:
+			try:
+				vec = calc_vec(i)
+			except:
+				continue
+			train.write(i + '\n\n')
+			vecs.append([vec[i][0] for i in range(len(vec))])
+			print('len of vec: ', len(vecs[-1]))
+		train_vecs = open('vec_train.txt', 'wb')
+		pickle.dump(vecs, train_vecs)
+		train_vecs.close()
+		train.close()
 
 # main()
-with open("ReviewRebuttal.txt","r") as full_data:
-	full_data=full_data.read().split('\n\n')
-	print(len(full_data))
-	full_data.sort()  # make sure that the filenames have a fixed order before shuffling
-	random.seed(230)
-	random.shuffle(full_data) # shuffles the ordering of filenames (deterministic given the chosen seed)
 
-	split_1 = int(0.8 * len(full_data))
-	split_2 = int(0.9 * len(full_data))
-	print(split_1,split_2)
-	train_data = full_data[:split_1]
-	dev_data = full_data[split_1:split_2]
-	test_data = full_data[split_2:]
+with open("test.txt", "r") as f:
+	f = f.read().split('\n\n')
+	fnew = open('testnew.txt','w')
 
-	dev=open('dev.txt','w')
-	vecs = []
-	for i in dev_data:
-		dev.write(i+'\n\n')
-		vec = calc_vec(i)
-		vecs.append([vec[i][0] for i in range(len(vec))])
-		print('len of vec: ', len(vecs[-1]))
-	dev_vecs = open('vec_dev.txt', 'wb')
-	pickle.dump(vecs, dev_vecs)
-	dev_vecs.close()
-	dev.close()
+	for i in f[:-1]:
+		reply = []
+		inst = i.split('\n')
+		for line in inst:
+			if line.split('\t')[-1]=='Reply':
+				reply.append(line.split('\t')[-2][-1])
+		for line in inst:
+			print(line)
+			line_split = line.split('\t')
+			if line_split[-2]=='O':
+				fnew.write(line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2] + '\t' +
+						   line_split[-1] + '\n')
+			elif line_split[-1]=='Reply':
+				fnew.write(
+					line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][0] + '-0\t' +
+					line_split[-1] + '\n')
+			else:
+				review_index = line_split[-2][-1]
+				match_index=''
+				for reply_index in reply:
+					if review_index==reply_index:
+						match_index+='1'
+					else:
+						match_index+='0'
+				fnew.write(
+					line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][
+						0] + '-' + match_index + '\t' +
+					line_split[-1] + '\n')
 
-	test=open('test.txt','w')
-	vecs = []
-	for i in test_data:
-		test.write(i+'\n\n')
-		vec = calc_vec(i)
-		vecs.append([vec[i][0] for i in range(len(vec))])
-		print('len of vec: ', len(vecs[-1]))
-	test_vecs = open('vec_test.txt', 'wb')
-	pickle.dump(vecs, test_vecs)
-	test_vecs.close()
-	test.close()
+		fnew.write('\n')
 
-
-	train=open('train.txt','w')
-	vecs=[]
-	for i in train_data:
-		try:
-			vec=calc_vec(i)
-		except:
-			continue
-		train.write(i + '\n\n')
-		vecs.append([vec[i][0] for i in range(len(vec))])
-		print('len of vec: ', len(vecs[-1]))
-	train_vecs = open('vec_train.txt', 'wb')
-	pickle.dump(vecs, train_vecs)
-	train_vecs.close()
-	train.close()
-
+f.close()
+fnew.close()
 
 
