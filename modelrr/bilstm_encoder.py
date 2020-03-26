@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from config import ContextEmb
-from model.charbilstm import CharBiLSTM
+from modelrr.charbilstm import CharBiLSTM
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from overrides import overrides
@@ -31,15 +31,17 @@ class BiLSTMEncoder(nn.Module):
         self.word_embedding = nn.Embedding.from_pretrained(torch.FloatTensor(config.word_embedding), freeze=False).to(self.device)
         self.word_drop = nn.Dropout(config.dropout).to(self.device)
 
-        self.type_embedding = nn.Embedding(2,100).to(self.device)
+        self.type_embedding = nn.Embedding(3,20).to(self.device)
 
         if print_info:
             print("[Model Info] Input size to LSTM: {}".format(self.input_size))
             print("[Model Info] LSTM Hidden Size: {}".format(config.hidden_dim))
 
         self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=1, batch_first=True, bidirectional=True).to(self.device)
+        # print('lstm: ',self.lstm)
 
         self.drop_lstm = nn.Dropout(config.dropout).to(self.device)
+        # print('drop_lstm: ',self.drop_lstm)
 
         final_hidden_dim = config.hidden_dim
 
@@ -74,6 +76,7 @@ class BiLSTMEncoder(nn.Module):
         # print(type_id_tensor)
         sent_emb_tensor = sent_emb_tensor.to(self.device)
         type_emb = self.type_embedding(type_id_tensor)
+        print('type_id_tensor: ', type_id_tensor.size())
 
         # sent_rep = sent_emb_tensor
         sent_rep = torch.cat([sent_emb_tensor,type_emb],2)
@@ -86,13 +89,36 @@ class BiLSTMEncoder(nn.Module):
         sorted_seq_len, permIdx = sent_seq_lens.sort(0, descending=True)
         _, recover_idx = permIdx.sort(0, descending=False)
         sorted_seq_tensor = sent_rep[permIdx]
+        type_id = type_id_tensor[permIdx]
+        print('type_id: ', type_id)
 
         packed_words = pack_padded_sequence(sorted_seq_tensor, sorted_seq_len, True)
         lstm_out, _ = self.lstm(packed_words, None)
+        # print('lstm_out1: ',lstm_out.size())
         lstm_out, _ = pad_packed_sequence(lstm_out, batch_first=True)  ## CARE: make sure here is batch_first, otherwise need to transpose.
+        # print('lstm_out2: ', lstm_out.size())
         feature_out = self.drop_lstm(lstm_out)
+        # print('feature_out: ',feature_out)
+
+        for lstm_idx, lstm_inst in enumerate(feature_out):
+
+            # for lstm_sent_idx, lstm_sent_rep in enumerate(lstm_inst):
+            #     if type_id[lstm_idx][lstm_sent_idx]==1:
+
+
+            for lstm_review_idx, lstm_review in enumerate(lstm_inst):
+                if type_id[lstm_idx][lstm_review_idx]!=1:
+                    continue
+                else:
+                    for lstm_reply_idx, lstm_reply in enumerate(lstm_inst):
+                        if type_id[lstm_idx][lstm_reply_idx]!=2:
+                            continue
+                        else:
+                            lstm_review_reply_pair = torch.cat([lstm_review,lstm_reply],2)
+
 
         outputs = self.hidden2tag(feature_out)
+        # print('outputs: ',outputs.size())
 
         return outputs[recover_idx]
 

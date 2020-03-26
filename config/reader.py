@@ -58,9 +58,9 @@ class Reader:
 
                 ori_sents.append(sent)
                 if type == 'Review':
-                    type_id = 0
-                else:
                     type_id = 1
+                else:
+                    type_id = 2
                 types.append(type_id)
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.

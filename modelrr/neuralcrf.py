@@ -7,8 +7,8 @@ import torch.nn as nn
 
 from config import START, STOP, PAD, log_sum_exp_pytorch
 from model.charbilstm import CharBiLSTM
-from model.bilstm_encoder import BiLSTMEncoder
-from model.linear_crf_inferencer import LinearCRF
+from modelrr.bilstm_encoder import BiLSTMEncoder
+from modelrr.linear_crf_inferencer import LinearCRF
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from config import ContextEmb
 from typing import Tuple
@@ -43,6 +43,7 @@ class NNCRF(nn.Module):
         """
         # print("sents: ",sents)
         lstm_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens)
+        # print("lstm_scores: ", lstm_scores)
         # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
         batch_size = sent_emb_tensor.size(0)
         sent_len = sent_emb_tensor.size(1)

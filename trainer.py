@@ -3,7 +3,7 @@ import random
 import numpy as np
 from config import Reader, Config, ContextEmb, lr_decay, simple_batching, evaluate_batch_insts, get_optimizer, write_results, batching_list_instances
 import time
-from model.neuralcrf import NNCRF
+from modelrr.neuralcrf import NNCRF
 import torch
 from typing import List
 from common import Instance
@@ -35,7 +35,7 @@ def parse_arguments(parser):
     parser.add_argument('--dataset', type=str, default="rr")
     parser.add_argument('--embedding_file', type=str, default="data/glove.6B.100d.txt",
                         help="we will be using random embeddings if file do not exist")
-    parser.add_argument('--embedding_dim', type=int, default=868)
+    parser.add_argument('--embedding_dim', type=int, default=788)
     parser.add_argument('--optimizer', type=str, default="adam")
     parser.add_argument('--learning_rate', type=float, default=0.01)  ##only for sgd now
     parser.add_argument('--momentum', type=float, default=0.0)
