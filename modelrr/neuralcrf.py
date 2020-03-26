@@ -42,7 +42,7 @@ class NNCRF(nn.Module):
         :return: the total negative log-likelihood loss
         """
         # print("sents: ",sents)
-        lstm_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens)
+        lstm_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens,tags)
         # print("lstm_scores: ", lstm_scores)
         # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
         batch_size = sent_emb_tensor.size(0)
