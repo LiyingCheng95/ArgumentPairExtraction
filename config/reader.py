@@ -35,11 +35,15 @@ class Reader:
             ori_sents = []
             labels = []
             types = []
+            sent_idx = 0
+            review_idx = []
+            reply_idx = []
+
             for line in tqdm(f.readlines()):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
-                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types)
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types,review_idx,reply_idx)
                     ##read vector
 
                     insts.append(inst)
@@ -47,6 +51,10 @@ class Reader:
                     ori_sents = []
                     labels = []
                     types = []
+                    sent_idx = 0
+                    review_idx = []
+                    reply_idx = []
+
                     if len(insts) == number:
                         break
                     continue
@@ -62,6 +70,13 @@ class Reader:
                 else:
                     type_id = 2
                 types.append(type_id)
+
+                if label[0]!='O' and type_id==1:
+                    review_idx.append(sent_idx)
+                if type_id == 2:
+                    reply_idx.append(sent_idx)
+                sent_idx+=1
+
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.
                 sents.append(sent)

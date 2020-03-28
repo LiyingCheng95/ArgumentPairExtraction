@@ -153,7 +153,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     for batch in batch_insts_ids:
         one_batch_insts = insts[batch_id * batch_size:(batch_id + 1) * batch_size]
         batch_max_scores, batch_max_ids = model.decode(batch)
-        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-1], batch[2], config.idx2labels)
+        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-3], batch[2], config.idx2labels)
         batch_id += 1
     p, total_predict, total_entity = metrics[0], metrics[1], metrics[2]
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0
