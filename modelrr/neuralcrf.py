@@ -30,7 +30,9 @@ class NNCRF(nn.Module):
                     batch_context_emb: torch.Tensor,
                     chars: torch.Tensor,
                     char_seq_lens: torch.Tensor,
-                    tags: torch.Tensor) -> torch.Tensor:
+                    tags: torch.Tensor,
+                      review_index: torch.Tensor,
+                      reply_index: torch.Tensor) -> torch.Tensor:
         """
         Calculate the negative loglikelihood.
         :param words: (batch_size x max_seq_len)
@@ -42,24 +44,24 @@ class NNCRF(nn.Module):
         :return: the total negative log-likelihood loss
         """
         # print("sents: ",sents)
-        lstm_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens,tags)
+        lstm_scores,pair_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens,tags,review_index, reply_index)
         # print("lstm_scores: ", lstm_scores)
         # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
         batch_size = sent_emb_tensor.size(0)
         sent_len = sent_emb_tensor.size(1)
         maskTemp = torch.arange(1, sent_len + 1, dtype=torch.long).view(1, sent_len).expand(batch_size, sent_len).to(self.device)
         mask = torch.le(maskTemp, sent_seq_lens.view(batch_size, 1).expand(batch_size, sent_len)).to(self.device)
-        unlabed_score, labeled_score =  self.inferencer(lstm_scores, sent_seq_lens, tags, mask)
+        unlabed_score, labeled_score =  self.inferencer(lstm_scores, pair_scores, sent_seq_lens, tags, mask)
         return unlabed_score - labeled_score
 
-    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Decode the batch input
         :param batchInput:
         :return:
         """
-        wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor = batchInput
-        features = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths)
+        wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor, review_index, reply_index = batchInput
+        features, pair_scores = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths, tagSeqTensor, review_index, reply_index)
         bestScores, decodeIdx = self.inferencer.decode(features, wordSeqLengths)
         # print(bestScores, decodeIdx)
         return bestScores, decodeIdx

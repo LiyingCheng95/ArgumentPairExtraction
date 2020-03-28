@@ -34,7 +34,7 @@ class LinearCRF(nn.Module):
         self.transition = nn.Parameter(init_transition)
 
     @overrides
-    def forward(self, lstm_scores, word_seq_lens, tags, mask):
+    def forward(self, lstm_scores, pair_scores, word_seq_lens, tags, mask):
         """
         Calculate the negative log-likelihood
         :param lstm_scores:
@@ -253,4 +253,5 @@ class LinearCRF(nn.Module):
             lastNIdxRecord = torch.gather(idxRecord, 1, torch.where(word_seq_lens - distance2Last - 1 > 0, word_seq_lens - distance2Last - 1, mask).view(batchSize, 1, 1).expand(batchSize, 1, self.label_size)).view(batchSize, self.label_size)
             decodeIdx[:, distance2Last + 1] = torch.gather(lastNIdxRecord, 1, decodeIdx[:, distance2Last].view(batchSize, 1)).view(batchSize)
 
+        print("bestScores, decodeIdx:  ", bestScores,decodeIdx)
         return bestScores, decodeIdx
