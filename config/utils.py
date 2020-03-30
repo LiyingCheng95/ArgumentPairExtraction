@@ -34,7 +34,7 @@ def batching_list_instances(config: Config, insts: List[Instance]):
 
     return batched_data
 
-def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
+def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
 
     """
     batching these instances together and return tensors. The seq_tensors for word and char contain their word id and char id.
@@ -79,6 +79,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     type_id_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
 
+    pair_tensor = torch.zeros((batch_size,max_seq_len,max_seq_len), dtype = torch.float32)
+
+    max_review_tensor = torch.zeros((batch_size), dtype=torch.long)
 
     for idx in range(batch_size):
 
@@ -88,6 +91,8 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
             # print('output_ids:   ', batch_data[idx].output_ids)
             # print('review_idx:   ', batch_data[idx].review_idx)
             # print(sent_seq_len[idx])
+            # print("batch_data[idx].max_review_id:   ",batch_data[idx].max_review_id )
+            max_review_tensor[idx]=batch_data[idx].max_review_id
             label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
             review_idx_tensor[idx, :len(batch_data[idx].review_idx)] = torch.LongTensor(batch_data[idx].review_idx)
             reply_idx_tensor[idx, :len(batch_data[idx].reply_idx)] = torch.LongTensor(batch_data[idx].reply_idx)
@@ -100,6 +105,11 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
             # print('sent_emb_tensor', sent_emb_tensor[idx, sent_idx, 0])
             char_seq_tensor[idx, sent_idx, :char_seq_len[idx, sent_idx]] = torch.LongTensor(batch_data[idx].char_ids[sent_idx])
+
+
+            for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
+                if batch_data[idx].labels_pair[sent_idx]== batch_data[idx].labels_pair[sent_idx2]:
+                    pair_tensor[idx,sent_idx,sent_idx2]=1.0
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
             char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
 
@@ -115,7 +125,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     review_idx_tensor = review_idx_tensor.to(config.device)
     reply_idx_tensor = reply_idx_tensor.to(config.device)
 
-    return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor
+    pair_tensor = pair_tensor.to(config.device)
+
+    return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, max_review_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:

@@ -33,8 +33,11 @@ class LinearCRF(nn.Module):
 
         self.transition = nn.Parameter(init_transition)
 
+        final_hidden_dim = config.hidden_dim
+        self.pair2score = nn.Linear(final_hidden_dim * 2, 1).to(self.device)
+
     @overrides
-    def forward(self, lstm_scores, pair_scores, word_seq_lens, tags, mask):
+    def forward(self, lstm_scores, pair_scores, word_seq_lens, tags, mask, pairs):
         """
         Calculate the negative log-likelihood
         :param lstm_scores:
@@ -46,11 +49,19 @@ class LinearCRF(nn.Module):
         all_scores=  self.calculate_all_scores(lstm_scores= lstm_scores)
         unlabed_score = self.forward_unlabeled(all_scores, word_seq_lens)
         labeled_score = self.forward_labeled(all_scores, word_seq_lens, tags, mask)
-        return unlabed_score, labeled_score
 
-    def get_marginal_score(self, lstm_scores: torch.Tensor, word_seq_lens: torch.Tensor) -> torch.Tensor:
-        marginal = self.forward_backward(lstm_scores=lstm_scores, word_seq_lens=word_seq_lens)
-        return marginal
+        pair_loss = self.calculate_pair_loss(y = pairs, pair_scores = pair_scores)
+        # all_pair_scores = self.calculate_pair_scores(pair_scores= pair_scores)
+        # unlabed_pair_score = self.forward_pair_unlabeled(all_pair_scores, word_seq_lens)
+        # labeled_pair_score = self.forward_labeled(all_pair_scores, word_seq_lens, tags, mask)
+
+        return unlabed_score, labeled_score, pair_loss
+
+    def calculate_pair_loss(self, y: torch.Tensor, pair_scores: torch.Tensor) -> torch.Tensor:
+        criterion = nn.BCEWithLogitsLoss()
+        loss = criterion(pair_scores, y.unsqueeze(3))
+        return loss
+
 
     def forward_unlabeled(self, all_scores: torch.Tensor, word_seq_lens: torch.Tensor) -> torch.Tensor:
         """
@@ -119,55 +130,6 @@ class LinearCRF(nn.Module):
 
         return torch.sum(last_beta)
 
-    def forward_backward(self, lstm_scores: torch.Tensor, word_seq_lens: torch.Tensor) -> torch.Tensor:
-        """
-        Forward-backward algorithm to compute the marginal probability (in log space)
-        Basically, we follow the `backward` algorithm to obtain the backward scores.
-        :param lstm_scores:   shape: (batch_size, sent_len, label_size) NOTE: the score from LSTMs, not `all_scores` (which add up the transtiion)
-        :param word_seq_lens: shape: (batch_size,)
-        :return: Marginal score. If you want probability, you need to use `torch.exp` to convert it into probability
-        """
-        batch_size = lstm_scores.size(0)
-        seq_len = lstm_scores.size(1)
-
-        alpha = torch.zeros(batch_size, seq_len, self.label_size).to(self.device)
-        beta = torch.zeros(batch_size, seq_len, self.label_size).to(self.device)
-
-        scores = self.transition.view(1, 1, self.label_size, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size) + \
-                 lstm_scores.view(batch_size, seq_len, 1, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size)
-        ## reverse the view of computing the score. we look from behind
-        rev_score = self.transition.transpose(0, 1).view(1, 1, self.label_size, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size) + \
-                    lstm_scores.view(batch_size, seq_len, 1, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size)
-
-        perm_idx = torch.zeros(batch_size, seq_len).to(self.device)
-        for batch_idx in range(batch_size):
-            perm_idx[batch_idx][:word_seq_lens[batch_idx]] = torch.range(word_seq_lens[batch_idx] - 1, 0, -1)
-        perm_idx = perm_idx.long()
-        for i, length in enumerate(word_seq_lens):
-            rev_score[i, :length] = rev_score[i, :length][perm_idx[i, :length]]
-
-        alpha[:, 0, :] = scores[:, 0, self.start_idx, :]  ## the first position of all labels = (the transition from start - > all labels) + current emission.
-        beta[:, 0, :] = rev_score[:, 0, self.end_idx, :]
-        for word_idx in range(1, seq_len):
-            before_log_sum_exp = alpha[:, word_idx - 1, :].view(batch_size, self.label_size, 1).expand(batch_size, self.label_size, self.label_size) + scores[ :, word_idx, :, :]
-            alpha[:, word_idx, :] = log_sum_exp_pytorch(before_log_sum_exp)
-
-            before_log_sum_exp = beta[:, word_idx - 1, :].view(batch_size, self.label_size, 1).expand(batch_size, self.label_size, self.label_size) + rev_score[:, word_idx, :, :]
-            beta[:, word_idx, :] = log_sum_exp_pytorch(before_log_sum_exp)
-
-        ### batch_size x label_size
-        last_alpha = torch.gather(alpha, 1, word_seq_lens.view(batch_size, 1, 1).expand(batch_size, 1, self.label_size) - 1).view( batch_size, self.label_size)
-        last_alpha += self.transition[:, self.end_idx].view(1, self.label_size).expand(batch_size, self.label_size)
-        last_alpha = log_sum_exp_pytorch(last_alpha.view(batch_size, self.label_size, 1)).view(batch_size, 1, 1).expand(batch_size, seq_len, self.label_size)
-
-        ## Because we need to use the beta variable later, we need to reverse back
-        for i, length in enumerate(word_seq_lens):
-            beta[i, :length] = beta[i, :length][perm_idx[i, :length]]
-
-        # `alpha + beta - last_alpha` is the standard way to obtain the marginal
-        # However, we have two emission scores overlap at each position, thus, we need to subtract one emission score
-        return alpha + beta - last_alpha - lstm_scores
-
     def forward_labeled(self, all_scores: torch.Tensor, word_seq_lens: torch.Tensor, tags: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
         '''
         Calculate the scores for the gold instances.
@@ -204,6 +166,12 @@ class LinearCRF(nn.Module):
         seq_len = lstm_scores.size(1)
         scores = self.transition.view(1, 1, self.label_size, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size) + \
                  lstm_scores.view(batch_size, seq_len, 1, self.label_size).expand(batch_size, seq_len, self.label_size, self.label_size)
+        return scores
+
+    def calculate_pair_scores(self, pair_scores: torch.Tensor) -> torch.Tensor:
+        batch_size = pair_scores.size(0)
+        seq_len = pair_scores.size(1)
+        scores = pair_scores.view(batch_size, seq_len, 1, 1, 2).expand(batch_size, seq_len, seq_len, 2, 2)
         return scores
 
     def decode(self, features, wordSeqLengths) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -253,5 +221,51 @@ class LinearCRF(nn.Module):
             lastNIdxRecord = torch.gather(idxRecord, 1, torch.where(word_seq_lens - distance2Last - 1 > 0, word_seq_lens - distance2Last - 1, mask).view(batchSize, 1, 1).expand(batchSize, 1, self.label_size)).view(batchSize, self.label_size)
             decodeIdx[:, distance2Last + 1] = torch.gather(lastNIdxRecord, 1, decodeIdx[:, distance2Last].view(batchSize, 1)).view(batchSize)
 
-        print("bestScores, decodeIdx:  ", bestScores,decodeIdx)
+        # print("bestScores, decodeIdx:  ", bestScores,decodeIdx)
         return bestScores, decodeIdx
+
+    def pair_decode(self, feature_out: torch.Tensor, max_review_id: torch.Tensor, decodeIdx: torch.Tensor, wordSeqLengths: torch.Tensor)  -> torch.Tensor :
+        batch_size = decodeIdx.size()[0]
+        max_review_size = max_review_id.max()
+        max_seq_len = decodeIdx.size()[1]
+        # max_reply_size = max_seq_len - max_review_id.max().min
+
+        # review_idx = torch.zeros((batch_size,max_review_size), dtype=torch.long)
+        # reply_idx = torch.zeros((batch_size, max_reply_size), dtype=torch.long)
+
+        review_idx = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
+        reply_idx = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
+        for batch_idx in range(batch_size):
+            # review_ids[batch_idx,:] = decodeIdx[batch_idx][:max_review_id[batch_idx]]
+            i=0
+            for idx in range(max_review_id[batch_idx]):
+                if decodeIdx[batch_idx][idx] in (2,3,4,5):
+                    review_idx[batch_idx,i]= idx
+                    i+=1
+            i=0
+            for idx in range(max_review_id[batch_idx]+1,max_review_size):
+                reply_idx[batch_idx,i]= idx
+                i+=1
+
+        # review_index
+
+
+        lstm_review_rep = torch.gather(feature_out, 1, review_idx.unsqueeze(2).expand(feature_out.size()))
+        lstm_reply_rep = torch.gather(feature_out, 1, reply_idx.unsqueeze(2).expand(feature_out.size()))
+        batch_size, max_review, hidden_dim = lstm_review_rep.size()
+        max_reply = lstm_reply_rep.size()[1]
+        lstm_review_rep = lstm_review_rep.unsqueeze(2).expand(batch_size, max_review, max_reply, hidden_dim)
+        lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size, max_review, max_reply, hidden_dim)
+        lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
+
+        pair_scores = self.pair2score(lstm_pair_rep)
+
+        sigmoid = nn.Sigmoid()
+        pair_scores=sigmoid(pair_scores)
+        t=0.5
+        # print(pair_scores)
+        pairIdx = (pair_scores>t).float()
+        # print("pairIdx:  ", pairIdx)
+        return pairIdx
+
+

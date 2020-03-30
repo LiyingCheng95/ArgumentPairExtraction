@@ -1,7 +1,7 @@
 import argparse
 import random
 import numpy as np
-from config import Reader, Config, ContextEmb, lr_decay, simple_batching, evaluate_batch_insts, get_optimizer, write_results, batching_list_instances
+from config import Reader, Config, ContextEmb, lr_decay, simple_batching, evaluate_batch_insts, get_optimizer, write_results, batching_list_instances, evaluate_pairs
 import time
 from modelrr.neuralcrf import NNCRF
 import torch
@@ -147,19 +147,42 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
 
 def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, insts: List[Instance]):
     ## evaluation
+    tp, fp, tn, fn = 0, 0, 0, 0
     metrics = np.asarray([0, 0, 0], dtype=int)
+    pair_metrics = np.asarray([0, 0, 0], dtype=int)
     batch_id = 0
     batch_size = config.batch_size
     for batch in batch_insts_ids:
         one_batch_insts = insts[batch_id * batch_size:(batch_id + 1) * batch_size]
-        batch_max_scores, batch_max_ids = model.decode(batch)
-        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-3], batch[2], config.idx2labels)
+        batch_max_scores, batch_max_ids, pair_ids = model.decode(batch)
+        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-5], batch[2], config.idx2labels)
+        # print(pair_ids.size(), batch[-2].size())
+        #pair_metrics+= evaluate_pairs(one_batch_insts, pair_ids, batch[-2].unsqueeze(3))
+        pred = pair_ids.flatten()
+        gold = batch[-2].unsqueeze(3).flatten()
+        print('##########################', gold.size())
+        for i in range(gold.size()[0]):
+            if pred[i] == 1:
+                if gold[i] == 1:
+                    tp += 1
+                else:
+                    fp += 1
+            else:
+                if gold[i] == 1:
+                    fn += 1
+                else:
+                    tn += 1
         batch_id += 1
+    print('tp, fp, fn, tn: ', tp, fp, fn, tn)
+    precision_2 = 1.0*tp/(tp+fp)* 100 if tp+fp != 0 else 0
+    recall_2 = 1.0*tp/(tp+fn)* 100 if tp+fn != 0 else 0
+    f1_2 = 2.0*precision_2*recall_2/(precision_2+recall_2) if precision_2+recall_2 != 0 else 0
     p, total_predict, total_entity = metrics[0], metrics[1], metrics[2]
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0
     recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0
     fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
     print("[%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
+    print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_2, recall_2, f1_2), flush=True)
     return [precision, recall, fscore]
 
 

@@ -38,12 +38,15 @@ class Reader:
             sent_idx = 0
             review_idx = []
             reply_idx = []
+            labels_pair = []
+            max_review_id=0
 
-            for line in tqdm(f.readlines()):
+
+            for line in tqdm(f.readlines()[:100]):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
-                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types,review_idx,reply_idx)
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types,review_idx,reply_idx, labels_pair,max_review_id)
                     ##read vector
 
                     insts.append(inst)
@@ -54,15 +57,17 @@ class Reader:
                     sent_idx = 0
                     review_idx = []
                     reply_idx = []
+                    labels_pair = []
+                    max_review_id=0
 
                     if len(insts) == number:
                         break
                     continue
                 ls = line.split('\t')
                 if ls[1]=='O':
-                    sent, label, type = ls[0], ls[1], ls[-1]
+                    sent, label, label_pair, type = ls[0], ls[1], 0, ls[-1]
                 else:
-                    sent, label, type = ls[0], ls[1][:2] + '0', ls[-1]
+                    sent, label, label_pair, type = ls[0], ls[1][:2] + '0', ls[2][2:], ls[-1]
 
                 ori_sents.append(sent)
                 if type == 'Review':
@@ -77,6 +82,9 @@ class Reader:
                     reply_idx.append(sent_idx)
                 sent_idx+=1
 
+                if type_id==1:
+                    max_review_id+=1
+
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.
                 sents.append(sent)
@@ -87,6 +95,7 @@ class Reader:
                 # vecs.append(vec[0][0])
 
                 labels.append(label)
+                labels_pair.append(label_pair)
         print("number of sentences: {}".format(len(insts)))
         return insts
 

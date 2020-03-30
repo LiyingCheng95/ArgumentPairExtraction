@@ -51,7 +51,7 @@ class BiLSTMEncoder(nn.Module):
 
         self.hidden2tag = nn.Linear(final_hidden_dim, self.label_size).to(self.device)
 
-        self.pair2score = nn.Linear(final_hidden_dim * 2, 2).to(self.device)
+        self.pair2score = nn.Linear(final_hidden_dim * 2, 1).to(self.device)
 
     @overrides
     def forward(self, sent_emb_tensor: torch.Tensor,
@@ -62,8 +62,9 @@ class BiLSTMEncoder(nn.Module):
                       char_seq_lens: torch.Tensor,
                       tags: torch.Tensor,
                       review_index: torch.Tensor,
-                      reply_index: torch.Tensor
-                        ) -> torch.Tensor:
+                      reply_index: torch.Tensor,
+                        pairs: torch.Tensor,
+                        max_review_id: torch.Tensor) -> torch.Tensor:
         """
         Encoding the input with BiLSTM
         :param word_seq_tensor: (batch_size, sent_len)   NOTE: The word seq actually is already ordered before come here.
@@ -108,92 +109,105 @@ class BiLSTMEncoder(nn.Module):
         feature_out = self.drop_lstm(lstm_out)
         # print('feature_out: ',feature_out)
 
-        # feature_out = feature_out[recover_idx]
+        feature_out = feature_out[recover_idx]
 
-        max_review_len = 0
-        max_reply_len =0
-        max_pair_len = 0
-        for lstm_idx, lstm_inst in enumerate(feature_out):
-            # review_len = lstm_inst.count(1)
-            # reply_len = lstm_inst.count(2)
-            review_len = 0
-            reply_len = 0
-            for lstm_sent_idx, lstm_sent_rep in enumerate(lstm_inst):
-                # print("first time:  ",  type_id[lstm_idx][lstm_sent_idx])
-                if type_id[lstm_idx][lstm_sent_idx]==1 and tag_id[lstm_idx][lstm_sent_idx] in (2,3,4,5):
-                    review_len+=1
-                if type_id[lstm_idx][lstm_sent_idx] == 2:
-                    reply_len+=1
-            pair_len = review_len * reply_len
-            # print('review_len: ',review_len)
-            if  pair_len > max_pair_len:
-                max_pair_len = pair_len
-            if review_len>max_review_len:
-                max_review_len = review_len
-            if reply_len>max_reply_len:
-                max_reply_len = reply_len
-
-        print("max review and reply len", max_review_len,max_reply_len, max_pair_len)
-
-        batch_size = feature_out.size()[0]
-        hidden_dim = feature_out.size()[-1]
-
-        lstm_review_rep = torch.zeros((batch_size, max_review_len, hidden_dim), dtype=torch.float32)
-        lstm_reply_rep = torch.zeros((batch_size, max_reply_len, hidden_dim), dtype=torch.float32)
-        lstm_pair_rep = torch.zeros((batch_size, max_review_len, max_reply_len, hidden_dim * 2), dtype=torch.float32)
-
-
-        for lstm_idx, lstm_inst in enumerate(feature_out):
-            review_idx = 0
-            reply_idx = 0
-            pair_idx = 0
-            # print(type_id[lstm_idx])
-            # print(lstm_inst.size(),lstm_inst)
-            for lstm_review_idx, lstm_review in enumerate(lstm_inst):
-                # print(type_id[lstm_idx][lstm_review_idx])
-                if type_id[lstm_idx][lstm_review_idx] == 2:
-                    # print('test reply')
-                    lstm_reply_rep[lstm_idx, reply_idx, :] = lstm_review
-                    reply_idx+=1
-                if type_id[lstm_idx][lstm_review_idx]==1 and tag_id[lstm_idx][lstm_review_idx] in (2,3,4,5):
-                    lstm_review_rep[lstm_idx,review_idx,:] = lstm_review
-                    review_idx += 1
-                    # print('test2: ', type_id[lstm_idx])
-                    reply2_idx=0
-                    for lstm_reply_idx, lstm_reply in enumerate(lstm_inst):
-
-                        if type_id[lstm_idx][lstm_reply_idx] == 2:
-                            # print("lstm_idx,review_idx, reply_idx, pair_idx: ", lstm_idx,review_idx, reply_idx, pair_idx)
-                            # print("lstm_review,lstm_reply  ", lstm_review.size(),lstm_reply.size(), lstm_review,lstm_reply)
-                            # print("torch.cat([lstm_review,lstm_reply],2):  ", torch.cat([lstm_review,lstm_reply],2).size(), torch.cat([lstm_review,lstm_reply],2))
-                            # print(review_idx,reply_idx,reply2_idx)
-                            # print(lstm_idx)
-                            lstm_pair_rep[lstm_idx,review_idx-1,reply2_idx,:] = torch.cat([lstm_review,lstm_reply],0)
-                            pair_idx+=1
-                            reply2_idx+=1
-
-        # ## pip install allennlp
+        # max_review_len = 0
+        # max_reply_len =0
+        # max_pair_len = 0
+        # for lstm_idx, lstm_inst in enumerate(feature_out):
+        #     # review_len = lstm_inst.count(1)
+        #     # reply_len = lstm_inst.count(2)
+        #     review_len = 0
+        #     reply_len = 0
+        #     for lstm_sent_idx, lstm_sent_rep in enumerate(lstm_inst):
+        #         # print("first time:  ",  type_id[lstm_idx][lstm_sent_idx])
+        #         if type_id[lstm_idx][lstm_sent_idx]==1 and tag_id[lstm_idx][lstm_sent_idx] in (2,3,4,5):
+        #             review_len+=1
+        #         if type_id[lstm_idx][lstm_sent_idx] == 2:
+        #             reply_len+=1
+        #     pair_len = review_len * reply_len
+        #     # print('review_len: ',review_len)
+        #     if  pair_len > max_pair_len:
+        #         max_pair_len = pair_len
+        #     if review_len>max_review_len:
+        #         max_review_len = review_len
+        #     if reply_len>max_reply_len:
+        #         max_reply_len = reply_len
         #
-        # ## type id: batch_size x sent_len = 6
-        # ## type_id[0]= (1, 1, 1, 2 ,2 , 0)
-        # # review_index = (batch_size x max_review_len)
-        # ## review_index[0] = (0, 1, 2)
-        # # reply_index = (batch_size x max_reply_len)
-        # # reply_index[0] = (3,4)
+        # print("max review and reply len", max_review_len,max_reply_len, max_pair_len)
+        #
+        # batch_size = feature_out.size()[0]
+        # hidden_dim = feature_out.size()[-1]
+        #
+        # lstm_review_rep = torch.zeros((batch_size, max_review_len, hidden_dim), dtype=torch.float32)
+        # lstm_reply_rep = torch.zeros((batch_size, max_reply_len, hidden_dim), dtype=torch.float32)
+        # lstm_pair_rep = torch.zeros((batch_size, max_review_len, max_reply_len, hidden_dim * 2), dtype=torch.float32)
+        #
+        #
+        # for lstm_idx, lstm_inst in enumerate(feature_out):
+        #     review_idx = 0
+        #     reply_idx = 0
+        #     pair_idx = 0
+        #     # print(type_id[lstm_idx])
+        #     # print(lstm_inst.size(),lstm_inst)
+        #     for lstm_review_idx, lstm_review in enumerate(lstm_inst):
+        #         # print(type_id[lstm_idx][lstm_review_idx])
+        #         if type_id[lstm_idx][lstm_review_idx] == 2:
+        #             # print('test reply')
+        #             lstm_reply_rep[lstm_idx, reply_idx, :] = lstm_review
+        #             reply_idx+=1
+        #         if type_id[lstm_idx][lstm_review_idx]==1 and tag_id[lstm_idx][lstm_review_idx] in (2,3,4,5):
+        #             lstm_review_rep[lstm_idx,review_idx,:] = lstm_review
+        #             review_idx += 1
+        #             # print('test2: ', type_id[lstm_idx])
+        #             reply2_idx=0
+        #             for lstm_reply_idx, lstm_reply in enumerate(lstm_inst):
+        #
+        #                 if type_id[lstm_idx][lstm_reply_idx] == 2:
+        #                     # print("lstm_idx,review_idx, reply_idx, pair_idx: ", lstm_idx,review_idx, reply_idx, pair_idx)
+        #                     # print("lstm_review,lstm_reply  ", lstm_review.size(),lstm_reply.size(), lstm_review,lstm_reply)
+        #                     # print("torch.cat([lstm_review,lstm_reply],2):  ", torch.cat([lstm_review,lstm_reply],2).size(), torch.cat([lstm_review,lstm_reply],2))
+        #                     # print(review_idx,reply_idx,reply2_idx)
+        #                     # print(lstm_idx)
+        #                     lstm_pair_rep[lstm_idx,review_idx-1,reply2_idx,:] = torch.cat([lstm_review,lstm_reply],0)
+        #                     pair_idx+=1
+        #                     reply2_idx+=1
+
+        ## pip install allennlp
+
+        ## type id: batch_size x sent_len = 6
+        ## type_id[0]= (1, 1, 1, 2 ,2 , 0)
+        # review_index = (batch_size x max_review_len)
+        ## review_index[0] = (0, 1, 2)
+        # reply_index = (batch_size x max_reply_len)
+        # reply_index[0] = (3,4)
+
+
         # print('feature_out:   ', feature_out.size())
         # print('review_index: ',review_index.size())
-        # lstm_review_rep = torch.gather(feature_out, 1, review_index.unsqueeze(2).expand(feature_out.size()))
-        # lstm_reply_rep = torch.gather(feature_out, 1, reply_index.unsqueeze(2).expand(feature_out.size()))
-        # # lstm_review_rep = batched_index_select(feature_out, review_index)
-        # # lstm_reply_rep = batched_index_select(feature_out, reply_index)
+        lstm_review_rep = torch.gather(feature_out, 1, review_index.unsqueeze(2).expand(feature_out.size()))
+        lstm_reply_rep = torch.gather(feature_out, 1, reply_index.unsqueeze(2).expand(feature_out.size()))
+        batch_size, max_review, hidden_dim = lstm_review_rep.size()
+        max_reply = lstm_reply_rep.size()[1]
+        # print("batch_size, max_review, hidden_dim:  ", batch_size, max_review, hidden_dim)
+
+        # lstm_review_rep = batched_index_select(feature_out, review_index)
+        # lstm_reply_rep = batched_index_select(feature_out, reply_index)
+        lstm_review_rep = lstm_review_rep.unsqueeze(2).expand(batch_size,max_review,max_reply,hidden_dim)
+        lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size,max_review,max_reply,hidden_dim)
+        lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
+
+
+
+
         # lstm_pair_rep = torch.zeros(lstm_review_rep.size()[0],lstm_review_rep.size()[1],lstm_reply_rep.size()[1],lstm_review_rep.size()[2]*2)
+        #
         # for idx in range(lstm_review_rep.size()[0]):
         #     for rvw_idx in range(lstm_review_rep[idx].size()[0]):
         #         for rpl_idx in range(lstm_reply_rep[idx].size()[0]):
         #             lstm_pair_rep[idx,rvw_idx,rpl_idx,:]=torch.cat([lstm_review_rep[idx][rvw_idx],lstm_reply_rep[idx][rpl_idx]],0)
-        # # lstm_pair_rep = torch.bmm(lstm_review_rep.unsqueeze(2), lstm_reply_rep.unsqueeze(1))
 
-
+        #
         # print('review:  ', lstm_review_rep.size(),lstm_review_rep)
         # print('reply:  ', lstm_reply_rep.size(),lstm_reply_rep)
         # print('pair:  ', lstm_pair_rep.size(), lstm_pair_rep)
@@ -205,6 +219,6 @@ class BiLSTMEncoder(nn.Module):
         outputs = self.hidden2tag(feature_out)
         # print('outputs: ',outputs.size())
 
-        return outputs[recover_idx],score[recover_idx]
+        return feature_out,outputs,score
 
 

@@ -4,6 +4,7 @@ from overrides import overrides
 from typing import List
 from common import Instance
 import torch
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 
 class Span:
@@ -90,3 +91,19 @@ def evaluate_batch_insts(batch_insts: List[Instance],
     # fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
 
     return np.asarray([p, total_predict, total_entity], dtype=int)
+
+
+def evaluate_pairs(batch_insts: List[Instance],
+                         pair_ids: torch.LongTensor,
+                         gold_ids: torch.LongTensor,
+                         ) -> np.ndarray:
+    """
+    not in use
+    """
+
+    pair_ids = pair_ids.view(-1,1)
+    gold_ids = gold_ids.view(-1,1)
+    precision = precision_score(gold_ids,pair_ids)
+    recall = recall_score(gold_ids,pair_ids)
+    f1 = f1_score(gold_ids,pair_ids)
+    return f1, precision, recall
