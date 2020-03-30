@@ -27,7 +27,7 @@ def set_seed(opt, seed):
 
 def parse_arguments(parser):
     ###Training Hyperparameters
-    parser.add_argument('--device', type=str, default="cpu", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2'],
+    parser.add_argument('--device', type=str, default="cpu", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3'],
                         help="GPU/CPU devices")
     parser.add_argument('--seed', type=int, default=42, help="random seed")
     parser.add_argument('--digit2zero', action="store_true", default=True,
@@ -158,20 +158,42 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-5], batch[2], config.idx2labels)
         # print(pair_ids.size(), batch[-2].size())
         #pair_metrics+= evaluate_pairs(one_batch_insts, pair_ids, batch[-2].unsqueeze(3))
-        pred = pair_ids.flatten()
-        gold = batch[-2].unsqueeze(3).flatten()
-        print('##########################', gold.size())
-        for i in range(gold.size()[0]):
-            if pred[i] == 1:
-                if gold[i] == 1:
-                    tp += 1
-                else:
-                    fp += 1
-            else:
-                if gold[i] == 1:
-                    fn += 1
-                else:
-                    tn += 1
+        # print(batch_max_ids.size(),pair_ids.size())
+        # pred = pair_ids.flatten()
+        # gold = batch[-2].unsqueeze(3).flatten()
+        # print('##########################', gold.size())
+        # print(batch_max_ids)
+        num_review = batch[-1]
+        for batch_id in range(batch_max_ids.size()[0]):
+            for i in range(len(batch_max_ids[batch_id])):
+                # print('num_review[batch_id]  ', num_review[batch_id], i)
+                # print('batch_max_ids[batch_id][i]  ',batch_max_ids[batch_id][i])
+                if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
+                    pred = pair_ids[batch_id][i].flatten()
+                    gold = batch[-2][batch_id][i].unsqueeze(1).flatten()
+                    # print(pred.size(),gold.size())
+                    for j in range(gold.size()[0]):
+                        if pred[j] == 1:
+                            if gold[j] == 1:
+                                tp += 1
+                            else:
+                                fp += 1
+                        else:
+                            if gold[j] == 1:
+                                fn += 1
+                            else:
+                                tn += 1
+        # for i in range(gold.size()[0]):
+        #     if pred[i] == 1:
+        #         if gold[i] == 1:
+        #             tp += 1
+        #         else:
+        #             fp += 1
+        #     else:
+        #         if gold[i] == 1:
+        #             fn += 1
+        #         else:
+        #             tn += 1
         batch_id += 1
     print('tp, fp, fn, tn: ', tp, fp, fn, tn)
     precision_2 = 1.0*tp/(tp+fp)* 100 if tp+fp != 0 else 0
