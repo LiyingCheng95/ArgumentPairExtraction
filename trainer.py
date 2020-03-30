@@ -110,6 +110,7 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         model.eval()
         dev_metrics = evaluate_model(config, model, dev_batches, "dev", dev_insts)
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
+        # print(test_insts.prediction)
         if dev_metrics[2] > best_dev[0]:
             print("saving the best model...")
             no_incre_dev = 0
@@ -150,10 +151,13 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     tp, fp, tn, fn = 0, 0, 0, 0
     metrics = np.asarray([0, 0, 0], dtype=int)
     pair_metrics = np.asarray([0, 0, 0], dtype=int)
-    batch_id = 0
+    batch_idx = 0
     batch_size = config.batch_size
+    print('insts',len(insts))
     for batch in batch_insts_ids:
-        one_batch_insts = insts[batch_id * batch_size:(batch_id + 1) * batch_size]
+        # print('batch_idx * batch_size:(batch_idx + 1) * batch_size', batch_idx* batch_size,(batch_idx + 1) * batch_size )
+        one_batch_insts = insts[batch_idx * batch_size:(batch_idx + 1) * batch_size]
+        # print(len(one_batch_insts))
         batch_max_scores, batch_max_ids, pair_ids = model.decode(batch)
         metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-5], batch[2], config.idx2labels)
         # print(pair_ids.size(), batch[-2].size())
@@ -194,8 +198,8 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         #             fn += 1
         #         else:
         #             tn += 1
-        batch_id += 1
-    print('tp, fp, fn, tn: ', tp, fp, fn, tn)
+        batch_idx += 1
+    # print('tp, fp, fn, tn: ', tp, fp, fn, tn)
     precision_2 = 1.0*tp/(tp+fp)* 100 if tp+fp != 0 else 0
     recall_2 = 1.0*tp/(tp+fn)* 100 if tp+fn != 0 else 0
     f1_2 = 2.0*precision_2*recall_2/(precision_2+recall_2) if precision_2+recall_2 != 0 else 0

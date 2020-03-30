@@ -248,7 +248,8 @@ class LinearCRF(nn.Module):
                 i+=1
 
         # review_index
-
+        review_idx = review_idx.to(self.device)
+        reply_idx = reply_idx.to(self.device)
 
         lstm_review_rep = torch.gather(feature_out, 1, review_idx.unsqueeze(2).expand(feature_out.size()))
         lstm_reply_rep = torch.gather(feature_out, 1, reply_idx.unsqueeze(2).expand(feature_out.size()))
