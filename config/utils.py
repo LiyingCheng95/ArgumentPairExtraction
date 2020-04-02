@@ -106,10 +106,11 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
             # print('sent_emb_tensor', sent_emb_tensor[idx, sent_idx, 0])
             char_seq_tensor[idx, sent_idx, :char_seq_len[idx, sent_idx]] = torch.LongTensor(batch_data[idx].char_ids[sent_idx])
 
-
-            for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
-                if batch_data[idx].labels_pair[sent_idx]== batch_data[idx].labels_pair[sent_idx2]:
-                    pair_tensor[idx,sent_idx,sent_idx2]=1.0
+            if sent_idx < batch_data[idx].max_review_id:
+                for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
+                    if batch_data[idx].labels_pair[sent_idx]== batch_data[idx].labels_pair[sent_idx2] and batch_data[idx].labels_pair[sent_idx]!=0 and batch_data[idx].type[sent_idx]!= batch_data[idx].type[sent_idx2]:
+                        pair_tensor[idx,sent_idx,sent_idx2]=1.0
+        # print(pair_tensor[idx,])
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
             char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
 
@@ -186,7 +187,9 @@ def write_results(filename: str, insts):
             sents = inst.input.ori_sents
             output = inst.output
             prediction = inst.prediction
+            gold2 = inst.gold2
+            pred2 = inst.pred2
             assert len(output) == len(prediction)
-            f.write("{}\t{}\t{}\t{}\n".format(i, sents[i], output[i], prediction[i]))
+            f.write("{}\t{}\t{}\t{}\t{}\t{}\n".format(i, sents[i], output[i], prediction[i], gold2[i], pred2[i]))
         f.write("\n")
     f.close()
