@@ -74,8 +74,8 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
     dev_batches = batching_list_instances(config, dev_insts)
     test_batches = batching_list_instances(config, test_insts)
 
-    best_dev = [-1, 0]
-    best_test = [-1, 0]
+    best_dev = [-1, 0, -1]
+    best_test = [-1, 0, -1]
 
     model_folder = config.model_folder
     res_folder = "results"
@@ -111,12 +111,14 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         dev_metrics = evaluate_model(config, model, dev_batches, "dev", dev_insts)
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
         # print(test_insts.prediction)
-        if dev_metrics[2] > best_dev[0]:
+        if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]):
             print("saving the best model...")
             no_incre_dev = 0
             best_dev[0] = dev_metrics[2]
+            best_dev[-1] = dev_metrics[-2]
             best_dev[1] = i
             best_test[0] = test_metrics[2]
+            best_test[-1] = test_metrics[-2]
             best_test[1] = i
             torch.save(model.state_dict(), model_path)
             # Save the corresponding config as well.
@@ -159,22 +161,25 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         one_batch_insts = insts[batch_idx * batch_size:(batch_idx + 1) * batch_size]
         # print(len(one_batch_insts))
         batch_max_scores, batch_max_ids, pair_ids = model.decode(batch)
-        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-5], batch[2], config.idx2labels)
+        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-6], batch[2], config.idx2labels)
         # print(pair_ids.size(), batch[-2].size())
         #pair_metrics+= evaluate_pairs(one_batch_insts, pair_ids, batch[-2].unsqueeze(3))
         # print(batch_max_ids.size(),pair_ids.size())
-        # pred = pair_ids.flatten()
-        # gold = batch[-2].unsqueeze(3).flatten()
-        # print('##########################', gold.size())
-        # print(batch_max_ids)
+
+
         num_review = batch[-1]
         for batch_id in range(batch_max_ids.size()[0]):
+            # print(pair_ids[batch_id].size())
+            one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
+            one_batch_insts[batch_id].gold2 = batch[-3][batch_id]
             for i in range(len(batch_max_ids[batch_id])):
-                # print('num_review[batch_id]  ', num_review[batch_id], i)
-                # print('batch_max_ids[batch_id][i]  ',batch_max_ids[batch_id][i])
-                if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
-                    pred = pair_ids[batch_id][i].flatten()
-                    gold = batch[-2][batch_id][i].unsqueeze(1).flatten()
+
+                # if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
+                if i < num_review[batch_id]:
+                    pred = pair_ids[batch_id][i].flatten()[num_review[batch_id]:]
+                    gold = batch[-3][batch_id][i].unsqueeze(1).flatten()[num_review[batch_id]:]
+
+
                     # print(pred.size(),gold.size())
                     for j in range(gold.size()[0]):
                         if pred[j] == 1:
@@ -187,6 +192,13 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
                                 fn += 1
                             else:
                                 tn += 1
+
+        # pred = pair_ids.flatten()
+        # gold = batch[-2].unsqueeze(3).flatten()
+        # # print('##########################', pred.size(), gold.size())
+        # print(pred)
+        # print(gold)
+        # # print(batch_max_ids)
         # for i in range(gold.size()[0]):
         #     if pred[i] == 1:
         #         if gold[i] == 1:
@@ -198,18 +210,21 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         #             fn += 1
         #         else:
         #             tn += 1
+
+
         batch_idx += 1
-    # print('tp, fp, fn, tn: ', tp, fp, fn, tn)
-    precision_2 = 1.0*tp/(tp+fp)* 100 if tp+fp != 0 else 0
-    recall_2 = 1.0*tp/(tp+fn)* 100 if tp+fn != 0 else 0
-    f1_2 = 2.0*precision_2*recall_2/(precision_2+recall_2) if precision_2+recall_2 != 0 else 0
+    print('tp, fp, fn, tn: ', tp, fp, fn, tn)
+    precision_2 = 1.0 * tp / (tp + fp) * 100 if tp + fp != 0 else 0
+    recall_2 = 1.0 * tp / (tp + fn) * 100 if tp + fn != 0 else 0
+    f1_2 = 2.0 * precision_2 * recall_2 / (precision_2 + recall_2) if precision_2 + recall_2 != 0 else 0
+    acc = 1.0 *(tp+tn)/(fp+fn+tp+tn) * 100 if fp+fn!=0 else 0
     p, total_predict, total_entity = metrics[0], metrics[1], metrics[2]
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0
     recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0
     fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
     print("[%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
-    print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_2, recall_2, f1_2), flush=True)
-    return [precision, recall, fscore]
+    print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f, acc: %.2f" % (name, precision_2, recall_2, f1_2, acc), flush=True)
+    return [precision, recall, fscore, precision_2, recall_2, f1_2, acc]
 
 
 def main():

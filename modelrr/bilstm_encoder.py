@@ -64,6 +64,7 @@ class BiLSTMEncoder(nn.Module):
                       review_index: torch.Tensor,
                       reply_index: torch.Tensor,
                         pairs: torch.Tensor,
+                        pair_padding_tensor: torch.Tensor,
                         max_review_id: torch.Tensor) -> torch.Tensor:
         """
         Encoding the input with BiLSTM
@@ -199,6 +200,10 @@ class BiLSTMEncoder(nn.Module):
 
 
 
+        # print(lstm_pair_rep.size(),pairs.size())
+
+
+
 
         # lstm_pair_rep = torch.zeros(lstm_review_rep.size()[0],lstm_review_rep.size()[1],lstm_reply_rep.size()[1],lstm_review_rep.size()[2]*2)
         #
@@ -214,7 +219,9 @@ class BiLSTMEncoder(nn.Module):
 
 
         score = self.pair2score(lstm_pair_rep)
+        # print("score_size:  ",score.size())
 
+        score = score * pair_padding_tensor.unsqueeze(3)
 
         outputs = self.hidden2tag(feature_out)
         # print('outputs: ',outputs.size())

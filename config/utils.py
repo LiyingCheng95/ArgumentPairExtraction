@@ -34,7 +34,7 @@ def batching_list_instances(config: Config, insts: List[Instance]):
 
     return batched_data
 
-def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
+def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
 
     """
     batching these instances together and return tensors. The seq_tensors for word and char contain their word id and char id.
@@ -80,6 +80,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     type_id_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
 
     pair_tensor = torch.zeros((batch_size,max_seq_len,max_seq_len), dtype = torch.float32)
+    pair_padding_tensor = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
 
     max_review_tensor = torch.zeros((batch_size), dtype=torch.long)
 
@@ -110,6 +111,10 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
                 for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
                     if batch_data[idx].labels_pair[sent_idx]== batch_data[idx].labels_pair[sent_idx2] and batch_data[idx].labels_pair[sent_idx]!=0 and batch_data[idx].type[sent_idx]!= batch_data[idx].type[sent_idx2]:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
+                    if batch_data[idx].type[sent_idx]!= batch_data[idx].type[sent_idx2]:
+                        pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
+
+
         # print(pair_tensor[idx,])
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
             char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
@@ -128,7 +133,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     pair_tensor = pair_tensor.to(config.device)
 
-    return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, max_review_tensor
+    return sent_emb_tensor, type_id_tensor, sent_seq_len, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, pair_padding_tensor, max_review_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:
@@ -173,7 +178,7 @@ def get_optimizer(config: Config, model: nn.Module):
         return optim.SGD(params, lr=config.learning_rate, weight_decay=float(config.l2))
     elif config.optimizer.lower() == "adam":
         print(colored("Using Adam", 'yellow'))
-        return optim.Adam(params)
+        return optim.Adam(params, config.learning_rate)
     else:
         print("Illegal optimizer: {}".format(config.optimizer))
         exit(1)

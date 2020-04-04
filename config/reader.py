@@ -48,7 +48,7 @@ class Reader:
                     vecs=all_vecs[len(insts)]
                     inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id)
                     ##read vector
-
+                    # print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)
                     sents = []
                     ori_sents = []
@@ -67,7 +67,7 @@ class Reader:
                 if ls[1]=='O':
                     sent, label, label_pair, type = ls[0], ls[1], 0, ls[-1]
                 else:
-                    sent, label, label_pair, type = ls[0], ls[1][:2] + '0', ls[2][2:], ls[-1]
+                    sent, label, label_pair, type = ls[0], ls[1][:2] + '0', int(ls[2][2:]), ls[-1]
 
                 ori_sents.append(sent)
                 if type == 'Review':
@@ -76,7 +76,7 @@ class Reader:
                     type_id = 2
                 types.append(type_id)
 
-                if label[0]!='O' and type_id==1:
+                if type_id==1:
                     review_idx.append(sent_idx)
                 if type_id == 2:
                     reply_idx.append(sent_idx)

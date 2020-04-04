@@ -37,7 +37,7 @@ class LinearCRF(nn.Module):
         self.pair2score = nn.Linear(final_hidden_dim * 2, 1).to(self.device)
 
     @overrides
-    def forward(self, lstm_scores, pair_scores, word_seq_lens, tags, mask, pairs):
+    def forward(self, lstm_scores, pair_scores, word_seq_lens, tags, mask, pairs, pair_padding):
         """
         Calculate the negative log-likelihood
         :param lstm_scores:
@@ -50,15 +50,17 @@ class LinearCRF(nn.Module):
         unlabed_score = self.forward_unlabeled(all_scores, word_seq_lens)
         labeled_score = self.forward_labeled(all_scores, word_seq_lens, tags, mask)
 
-        pair_loss = self.calculate_pair_loss(y = pairs, pair_scores = pair_scores)
+        pair_loss = self.calculate_pair_loss(y = pairs, pair_scores = pair_scores, pair_padding = pair_padding)
         # all_pair_scores = self.calculate_pair_scores(pair_scores= pair_scores)
         # unlabed_pair_score = self.forward_pair_unlabeled(all_pair_scores, word_seq_lens)
         # labeled_pair_score = self.forward_labeled(all_pair_scores, word_seq_lens, tags, mask)
 
         return unlabed_score, labeled_score, pair_loss
 
-    def calculate_pair_loss(self, y: torch.Tensor, pair_scores: torch.Tensor) -> torch.Tensor:
-        criterion = nn.BCEWithLogitsLoss()
+    def calculate_pair_loss(self, y: torch.Tensor, pair_scores: torch.Tensor, pair_padding: torch.Tensor) -> torch.Tensor:
+        # print(pair_scores)
+
+        criterion = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([20]), reduction='sum')
         loss = criterion(pair_scores, y.unsqueeze(3))
         return loss
 
@@ -239,9 +241,9 @@ class LinearCRF(nn.Module):
             # review_ids[batch_idx,:] = decodeIdx[batch_idx][:max_review_id[batch_idx]]
             i=0
             for idx in range(max_review_id[batch_idx]):
-                if decodeIdx[batch_idx][idx] in (2,3,4,5):
-                    review_idx[batch_idx,i]= idx
-                    i+=1
+                # if decodeIdx[batch_idx][idx] in (2,3,4,5):
+                review_idx[batch_idx,i]= idx
+                i+=1
             i=0
             for idx in range(max_review_id[batch_idx]+1,max_review_size):
                 reply_idx[batch_idx,i]= idx
