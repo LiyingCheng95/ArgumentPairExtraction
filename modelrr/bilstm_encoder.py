@@ -1,6 +1,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from config import ContextEmb
 from modelrr.charbilstm import CharBiLSTM
@@ -51,7 +52,9 @@ class BiLSTMEncoder(nn.Module):
 
         self.hidden2tag = nn.Linear(final_hidden_dim, self.label_size).to(self.device)
 
-        self.pair2score = nn.Linear(final_hidden_dim * 2, 1).to(self.device)
+        self.pair2score_first = nn.Linear(final_hidden_dim * 2, final_hidden_dim).to(self.device)
+        self.pair2score_final = nn.Linear(final_hidden_dim, 1).to(self.device)
+
 
     @overrides
     def forward(self, sent_emb_tensor: torch.Tensor,
@@ -198,8 +201,6 @@ class BiLSTMEncoder(nn.Module):
         lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size,max_review,max_reply,hidden_dim)
         lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
 
-
-
         # print(lstm_pair_rep.size(),pairs.size())
 
 
@@ -217,8 +218,9 @@ class BiLSTMEncoder(nn.Module):
         # print('reply:  ', lstm_reply_rep.size(),lstm_reply_rep)
         # print('pair:  ', lstm_pair_rep.size(), lstm_pair_rep)
 
-
-        score = self.pair2score(lstm_pair_rep)
+        x = self.pair2score_first(lstm_pair_rep)
+        y = F.relu(x)
+        score = self.pair2score_final(y)
         # print("score_size:  ",score.size())
 
         score = score * pair_padding_tensor.unsqueeze(3)
