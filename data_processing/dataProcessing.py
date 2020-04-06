@@ -58,7 +58,9 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 			# print("i: ",i)
 			
 			if i in j[1] and i!='':
-				if j2tag!=j[2]:
+				# print(j2tag,j[2])
+				if j2tag!=j[2] or bio==0:
+
 					temp+='B-'
 					temp+=category
 					temp+='\t'
@@ -191,44 +193,48 @@ def sep_data():
 		train_vecs.close()
 		train.close()
 
+
+
+def generate_testnew():
+	with open("test.txt", "r") as f:
+		f = f.read().split('\n\n')
+		fnew = open('testnew.txt','w')
+
+		for i in f[:-1]:
+			reply = []
+			inst = i.split('\n')
+			for line in inst:
+				if line.split('\t')[-1]=='Reply':
+					reply.append(line.split('\t')[-2][-1])
+			for line in inst:
+				print(line)
+				line_split = line.split('\t')
+				if line_split[-2]=='O':
+					fnew.write(line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2] + '\t' +
+							   line_split[-1] + '\n')
+				elif line_split[-1]=='Reply':
+					fnew.write(
+						line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][0] + '-0\t' +
+						line_split[-1] + '\n')
+				else:
+					review_index = line_split[-2][-1]
+					match_index=''
+					for reply_index in reply:
+						if review_index==reply_index:
+							match_index+='1'
+						else:
+							match_index+='0'
+					fnew.write(
+						line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][
+							0] + '-' + match_index + '\t' +
+						line_split[-1] + '\n')
+
+			fnew.write('\n')
+
+	f.close()
+	fnew.close()
+
+
 # main()
-
-with open("test.txt", "r") as f:
-	f = f.read().split('\n\n')
-	fnew = open('testnew.txt','w')
-
-	for i in f[:-1]:
-		reply = []
-		inst = i.split('\n')
-		for line in inst:
-			if line.split('\t')[-1]=='Reply':
-				reply.append(line.split('\t')[-2][-1])
-		for line in inst:
-			print(line)
-			line_split = line.split('\t')
-			if line_split[-2]=='O':
-				fnew.write(line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2] + '\t' +
-						   line_split[-1] + '\n')
-			elif line_split[-1]=='Reply':
-				fnew.write(
-					line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][0] + '-0\t' +
-					line_split[-1] + '\n')
-			else:
-				review_index = line_split[-2][-1]
-				match_index=''
-				for reply_index in reply:
-					if review_index==reply_index:
-						match_index+='1'
-					else:
-						match_index+='0'
-				fnew.write(
-					line_split[0] + '\t' + line_split[1] + '\t' + line_split[2] + '\t' + line_split[2][
-						0] + '-' + match_index + '\t' +
-					line_split[-1] + '\n')
-
-		fnew.write('\n')
-
-f.close()
-fnew.close()
-
+sep_data()
 

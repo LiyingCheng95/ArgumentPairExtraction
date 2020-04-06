@@ -42,7 +42,7 @@ class Reader:
             max_review_id=0
 
 
-            for line in tqdm(f.readlines()):
+            for line in tqdm(f.readlines()[:50]):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]

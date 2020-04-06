@@ -112,6 +112,7 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
         # print(test_insts.prediction)
         if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]):
+        # if dev_metrics[-2] > best_dev[-1]:
             print("saving the best model...")
             no_incre_dev = 0
             best_dev[0] = dev_metrics[2]
@@ -217,7 +218,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     precision_2 = 1.0 * tp / (tp + fp) * 100 if tp + fp != 0 else 0
     recall_2 = 1.0 * tp / (tp + fn) * 100 if tp + fn != 0 else 0
     f1_2 = 2.0 * precision_2 * recall_2 / (precision_2 + recall_2) if precision_2 + recall_2 != 0 else 0
-    acc = 1.0 *(tp+tn)/(fp+fn+tp+tn) * 100 if fp+fn!=0 else 0
+    acc = 1.0 *(tp+tn)/(fp+fn+tp+tn) * 100 if fp+fn+tp+tn!=0 else 0
     p, total_predict, total_entity = metrics[0], metrics[1], metrics[2]
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0
     recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0

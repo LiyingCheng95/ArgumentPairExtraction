@@ -58,7 +58,7 @@ class NNCRF(nn.Module):
         # print('unlabed_score:  ',unlabed_score.size(),unlabed_score)
         # print('labeled_score:  ',labeled_score.size(),labeled_score)
         print('loss:', unlabed_score - labeled_score, pair_loss)
-        return (unlabed_score - labeled_score) + 0.1*pair_loss
+        return (unlabed_score - labeled_score) + pair_loss
         # return pair_loss
 
     def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -71,7 +71,9 @@ class NNCRF(nn.Module):
         feature_out,features, pair_scores = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths, tagSeqTensor, review_index, reply_index, pairs, pair_padding, max_review_id)
         bestScores, decodeIdx = self.inferencer.decode(features, wordSeqLengths)
         # print ('decodeIdx:  ', decodeIdx)
-        pairIdx = self.inferencer.pair_decode(feature_out, max_review_id, decodeIdx, wordSeqLengths)
+        # pairIdx = self.inferencer.pair_decode(feature_out, max_review_id, decodeIdx, wordSeqLengths, review_index,reply_index)
+        pairIdx = self.inferencer.pair_decode(pair_scores, max_review_id, decodeIdx, wordSeqLengths, review_index,
+                                              reply_index)
 
 
         # print(bestScores, decodeIdx)

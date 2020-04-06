@@ -53,7 +53,9 @@ class BiLSTMEncoder(nn.Module):
         self.hidden2tag = nn.Linear(final_hidden_dim, self.label_size).to(self.device)
 
         self.pair2score_first = nn.Linear(final_hidden_dim * 2, final_hidden_dim).to(self.device)
-        self.pair2score_final = nn.Linear(final_hidden_dim, 1).to(self.device)
+        # self.pair2score_second = nn.Linear(final_hidden_dim, 100).to(self.device)
+        self.pair2score_final = nn.Linear(final_hidden_dim, 2).to(self.device)
+
 
 
     @overrides
@@ -189,6 +191,9 @@ class BiLSTMEncoder(nn.Module):
 
         # print('feature_out:   ', feature_out.size())
         # print('review_index: ',review_index.size())
+
+
+
         lstm_review_rep = torch.gather(feature_out, 1, review_index.unsqueeze(2).expand(feature_out.size()))
         lstm_reply_rep = torch.gather(feature_out, 1, reply_index.unsqueeze(2).expand(feature_out.size()))
         batch_size, max_review, hidden_dim = lstm_review_rep.size()
@@ -200,6 +205,12 @@ class BiLSTMEncoder(nn.Module):
         lstm_review_rep = lstm_review_rep.unsqueeze(2).expand(batch_size,max_review,max_reply,hidden_dim)
         lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size,max_review,max_reply,hidden_dim)
         lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
+
+        # batch_size, max_seq, hidden_dim = feature_out.size()
+        #
+        # lstm_review_rep = feature_out.unsqueeze(2).expand(batch_size, max_seq, max_seq, hidden_dim)
+        # lstm_reply_rep = feature_out.unsqueeze(1).expand(batch_size,max_seq,max_seq,hidden_dim)
+        # lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
 
         # print(lstm_pair_rep.size(),pairs.size())
 
@@ -220,10 +231,16 @@ class BiLSTMEncoder(nn.Module):
 
         x = self.pair2score_first(lstm_pair_rep)
         y = F.relu(x)
+        # y = self.pair2score_second(y)
+        # y = F.relu(y)
         score = self.pair2score_final(y)
-        # print("score_size:  ",score.size())
+        # score = F.log_softmax(score, dim=3)
 
-        score = score * pair_padding_tensor.unsqueeze(3)
+        # print("score_size:  ",score.size())
+        # pairs[pair_padding_tensor==0] = -100
+        # score = score * pair_padding_tensor.unsqueeze(3)
+
+        # score[score == 0] = -10000
 
         outputs = self.hidden2tag(feature_out)
         # print('outputs: ',outputs.size())
