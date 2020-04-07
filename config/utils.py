@@ -96,7 +96,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
             max_review_tensor[idx]=batch_data[idx].max_review_id
             label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
             review_idx_tensor[idx, :len(batch_data[idx].review_idx)] = torch.LongTensor(batch_data[idx].review_idx)
-            reply_idx_tensor[idx, len(batch_data[idx].review_idx):] = torch.LongTensor(batch_data[idx].reply_idx)
+            reply_idx_tensor[idx, max_seq_len-len(batch_data[idx].reply_idx):] = torch.LongTensor(batch_data[idx].reply_idx)
             type_id_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].type)
         if config.context_emb != ContextEmb.none:
             context_emb_tensor[idx, :sent_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
