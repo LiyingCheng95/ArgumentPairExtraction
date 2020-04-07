@@ -53,8 +53,8 @@ class BiLSTMEncoder(nn.Module):
         self.hidden2tag = nn.Linear(final_hidden_dim, self.label_size).to(self.device)
 
         self.pair2score_first = nn.Linear(final_hidden_dim * 2, final_hidden_dim).to(self.device)
-        # self.pair2score_second = nn.Linear(final_hidden_dim, 100).to(self.device)
-        self.pair2score_final = nn.Linear(final_hidden_dim, 2).to(self.device)
+        self.pair2score_second = nn.Linear(final_hidden_dim, 50).to(self.device)
+        self.pair2score_final = nn.Linear(50, 2).to(self.device)
 
 
 
@@ -231,8 +231,8 @@ class BiLSTMEncoder(nn.Module):
 
         x = self.pair2score_first(lstm_pair_rep)
         y = F.relu(x)
-        # y = self.pair2score_second(y)
-        # y = F.relu(y)
+        y = self.pair2score_second(y)
+        y = F.relu(y)
         score = self.pair2score_final(y)
         # score = F.log_softmax(score, dim=3)
 
