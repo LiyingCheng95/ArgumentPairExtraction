@@ -115,6 +115,7 @@ class BiLSTMEncoder(nn.Module):
         feature_out = self.drop_lstm(lstm_out)
         # print('feature_out: ',feature_out)
 
+        outputs = self.hidden2tag(feature_out)
         feature_out = feature_out[recover_idx]
 
         # max_review_len = 0
@@ -242,9 +243,9 @@ class BiLSTMEncoder(nn.Module):
 
         # score[score == 0] = -10000
 
-        outputs = self.hidden2tag(feature_out)
+
         # print('outputs: ',outputs.size())
 
-        return feature_out,outputs,score
+        return feature_out,outputs[recover_idx],score
 
 

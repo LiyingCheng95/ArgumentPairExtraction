@@ -65,7 +65,7 @@ class LinearCRF(nn.Module):
         # print(pair_scores)
 
         pair_scores = pair_scores.view(-1, 2)
-        criterion = nn.CrossEntropyLoss(reduction='mean')
+        criterion = nn.CrossEntropyLoss(reduction='sum')
         # criterion = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.1]), reduction='sum')
         # criterion = nn.BCEWithLogitsLoss(reduction='sum')
         # loss = criterion(pair_scores, y.unsqueeze(3))

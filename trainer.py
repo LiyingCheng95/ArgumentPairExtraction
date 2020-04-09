@@ -111,8 +111,9 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         dev_metrics = evaluate_model(config, model, dev_batches, "dev", dev_insts)
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
         # print(test_insts.prediction)
-        if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]):
-        # if dev_metrics[-2] > best_dev[-1]:
+        # if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]): # task 1 & task 2
+        # if dev_metrics[-2] > best_dev[-1]: # task 2
+        if dev_metrics[2] > best_dev[0]: # task 1
             print("saving the best model...")
             no_incre_dev = 0
             best_dev[0] = dev_metrics[2]
@@ -169,30 +170,52 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
 
 
         num_review = batch[-1]
-        for batch_id in range(batch_max_ids.size()[0]):
-            # print(pair_ids[batch_id].size())
-            one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
-            one_batch_insts[batch_id].gold2 = batch[-3][batch_id]
-            for i in range(len(batch_max_ids[batch_id])):
+        for inst_id in range(batch_max_ids.size()[0]):
+            # print(pair_ids[inst_id].size(), batch[-3][inst_id].size())
+            one_batch_insts[inst_id].pred2 = pair_ids[inst_id].squeeze(2)
+            one_batch_insts[inst_id].gold2 = batch[-3][inst_id]
 
-                # if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
-                if i < num_review[batch_id]:
-                    pred = pair_ids[batch_id][i].flatten()[num_review[batch_id]:]
-                    gold = batch[-3][batch_id][i].unsqueeze(1).flatten()[num_review[batch_id]:]
+            gold_pairs = one_batch_insts[inst_id].gold2.flatten()
+            pred_pairs = one_batch_insts[inst_id].pred2.flatten()
+
+            # print(gold_pairs,pred_pairs)
+            sum_table = gold_pairs + pred_pairs
+            # print(sum_table.size(),sum_table[:100])
+            sum_table_sliced = sum_table[sum_table >= 0]
+            # print(sum_table_sliced.size(),sum_table_sliced)
+            tp_tmp = len(sum_table_sliced[sum_table_sliced == 2])
+            tn_tmp = len(sum_table_sliced[sum_table_sliced == 0])
+            tp += tp_tmp
+            tn += tn_tmp
+            ones = len(gold_pairs[gold_pairs == 1])
+            zeros = len(gold_pairs[gold_pairs == 0])
+            fp += (zeros - tn_tmp)
+            fn += (ones - tp_tmp)
+            # print(tp,tp_tmp,tn,tn_tmp,ones,zeros,fp,fn)
 
 
-                    # print(pred.size(),gold.size())
-                    for j in range(gold.size()[0]):
-                        if pred[j] == 1:
-                            if gold[j] == 1:
-                                tp += 1
-                            else:
-                                fp += 1
-                        else:
-                            if gold[j] == 1:
-                                fn += 1
-                            else:
-                                tn += 1
+
+            # too slow
+            # for i in range(len(batch_max_ids[inst_id])):
+            #
+            #     # if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
+            #     if i < num_review[inst_id]:
+            #         pred = pair_ids[inst_id][i].flatten()[num_review[inst_id]:]
+            #         gold = batch[-3][inst_id][i].unsqueeze(1).flatten()[num_review[inst_id]:]
+            #
+            #
+            #         # print(pred.size(),gold.size())
+            #         for j in range(gold.size()[0]):
+            #             if pred[j] == 1:
+            #                 if gold[j] == 1:
+            #                     tp += 1
+            #                 else:
+            #                     fp += 1
+            #             else:
+            #                 if gold[j] == 1:
+            #                     fn += 1
+            #                 else:
+            #                     tn += 1
 
         # pred = pair_ids.flatten()
         # gold = batch[-2].unsqueeze(3).flatten()

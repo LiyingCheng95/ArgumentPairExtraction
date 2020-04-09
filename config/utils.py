@@ -81,6 +81,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     pair_tensor = torch.zeros((batch_size,max_seq_len,max_seq_len), dtype = torch.float32)
     pair_padding_tensor = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
+    # pair_padding_tensor1 = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
 
     max_review_tensor = torch.zeros((batch_size), dtype=torch.long)
 
@@ -96,11 +97,16 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
             max_review_tensor[idx]=batch_data[idx].max_review_id
             label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
             review_idx_tensor[idx, :len(batch_data[idx].review_idx)] = torch.LongTensor(batch_data[idx].review_idx)
-            reply_idx_tensor[idx, max_seq_len-len(batch_data[idx].reply_idx):] = torch.LongTensor(batch_data[idx].reply_idx)
+            reply_idx_tensor[idx, len(batch_data[idx].review_idx):sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].reply_idx)
             type_id_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].type)
+
         if config.context_emb != ContextEmb.none:
             context_emb_tensor[idx, :sent_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
-        
+        # print('type id tensor', type_id_tensor[idx])
+        # print('max review id', batch_data[idx].max_review_id, len(batch_data[idx].review_idx))
+        pair_padding_tensor[idx, :len(batch_data[idx].review_idx), len(batch_data[idx].review_idx):sent_seq_len[idx]] = 1.0
+
+
         for sent_idx in range(sent_seq_len[idx]):
             sent_emb_tensor[idx, sent_idx, :emb_size] = torch.Tensor(batch_data[idx].vec[sent_idx])
 
@@ -111,17 +117,21 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
                 for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
                     if batch_data[idx].labels_pair[sent_idx] == batch_data[idx].labels_pair[sent_idx2] \
                             and batch_data[idx].labels_pair[sent_idx] != 0 \
-                            and batch_data[idx].type[sent_idx] != batch_data[idx].type[sent_idx2]:
+                            and batch_data[idx].type[sent_idx]==1 and batch_data[idx].type[sent_idx2]==2:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
-                    if batch_data[idx].type[sent_idx]!= batch_data[idx].type[sent_idx2]:
-                        pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
+                    # if batch_data[idx].type[sent_idx]==1 and batch_data[idx].type[sent_idx2]==2:
+                    #     pair_padding_tensor1[idx,sent_idx,sent_idx2]=1.0
         # print("sum:", pair_padding_tensor)
-        pair_tensor[pair_padding_tensor==0] = -100
+        # print((pair_padding_tensor[idx]==pair_padding_tensor1[idx]).all())
+
+        # print('sum of pair padding tensor', torch.sum(pair_padding_tensor[idx]),torch.sum(pair_padding_tensor1[idx]))
+        # print(pair_padding_tensor[idx][:100])
+
 
         # print(pair_tensor[idx,])
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
             char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
-
+    pair_tensor[pair_padding_tensor == 0] = -100
     # word_seq_tensor = word_seq_tensor.to(config.device)
     label_seq_tensor = label_seq_tensor.to(config.device)
     char_seq_tensor = char_seq_tensor.to(config.device)
