@@ -117,7 +117,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
                 for sent_idx2 in range(sent_idx+1, sent_seq_len[idx]):
                     if batch_data[idx].labels_pair[sent_idx] == batch_data[idx].labels_pair[sent_idx2] \
                             and batch_data[idx].labels_pair[sent_idx] != 0 \
-                            and batch_data[idx].type[sent_idx]==1 and batch_data[idx].type[sent_idx2]==2:
+                            and batch_data[idx].type[sent_idx]==0 and batch_data[idx].type[sent_idx2]==1:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
                     # if batch_data[idx].type[sent_idx]==1 and batch_data[idx].type[sent_idx2]==2:
                     #     pair_padding_tensor1[idx,sent_idx,sent_idx2]=1.0

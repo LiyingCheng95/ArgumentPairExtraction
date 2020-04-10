@@ -42,7 +42,7 @@ class Reader:
             max_review_id=0
 
 
-            for line in tqdm(f.readlines()):
+            for line in tqdm(f.readlines()[:50]):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
@@ -71,19 +71,16 @@ class Reader:
 
                 ori_sents.append(sent)
                 if type == 'Review':
-                    type_id = 1
+                    type_id = 0
+                    review_idx.append(sent_idx)
+                    max_review_id += 1
                 else:
-                    type_id = 2
+                    type_id = 1
+                    reply_idx.append(sent_idx)
                 types.append(type_id)
 
-                if type_id==1:
-                    review_idx.append(sent_idx)
-                if type_id == 2:
-                    reply_idx.append(sent_idx)
                 sent_idx+=1
 
-                if type_id==1:
-                    max_review_id+=1
 
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.
