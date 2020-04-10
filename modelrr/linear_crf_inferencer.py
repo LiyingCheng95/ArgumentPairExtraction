@@ -235,75 +235,10 @@ class LinearCRF(nn.Module):
         return bestScores, decodeIdx
 
     def pair_decode(self, pair_scores: torch.Tensor, max_review_id: torch.Tensor, decodeIdx: torch.Tensor, wordSeqLengths: torch.Tensor, review_idx: torch.Tensor, reply_idx: torch.Tensor)  -> torch.Tensor :
-        # batch_size = decodeIdx.size()[0]
-        # max_review_size = max_review_id.max()
-        # max_seq_len = decodeIdx.size()[1]
-        # max_reply_size = max_seq_len - max_review_id.max().min
-
-        # review_idx = torch.zeros((batch_size,max_review_size), dtype=torch.long)
-        # reply_idx = torch.zeros((batch_size, max_reply_size), dtype=torch.long)
-
-        # review_idx = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
-        # reply_idx = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
-        # for batch_idx in range(batch_size):
-        #     # review_ids[batch_idx,:] = decodeIdx[batch_idx][:max_review_id[batch_idx]]
-        #     i=0
-        #     for idx in range(max_review_id[batch_idx]):
-        #         # if decodeIdx[batch_idx][idx] in (2,3,4,5):
-        #         review_idx[batch_idx,i]= idx
-        #         i+=1
-        #     i=0
-        #     for idx in range(max_review_id[batch_idx]+1,max_review_size):
-        #         reply_idx[batch_idx,i]= idx
-        #         i+=1
-        #
-        # # review_index
-        # review_idx = review_idx.to(self.device)
-        # reply_idx = reply_idx.to(self.device)
-        # print('feature_out.size()  ',feature_out.size(),review_idx, reply_idx)
-        # print('review_idx.unsqueeze(2).expand(feature_out.size()): ',reply_idx.unsqueeze(2).expand(feature_out.size()))
-
-
-
-        # lstm_review_rep = torch.gather(feature_out, 1, review_idx.unsqueeze(2).expand(feature_out.size()))
-        # lstm_reply_rep = torch.gather(feature_out, 1, reply_idx.unsqueeze(2).expand(feature_out.size()))
-        # batch_size, max_review, hidden_dim = lstm_review_rep.size()
-        # max_reply = lstm_reply_rep.size()[1]
-        #
-        # # print(feature_out)
-        # # print(lstm_reply_rep)
-        # # print("max_review, max_reply:  ",max_review,max_reply)
-        # lstm_review_rep = lstm_review_rep.unsqueeze(2).expand(batch_size, max_review, max_reply, hidden_dim)
-        # lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size, max_review, max_reply, hidden_dim)
-        # lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
-        #
-        # # batch_size, max_seq, hidden_dim = feature_out.size()
-        # #
-        # # lstm_review_rep = feature_out.unsqueeze(2).expand(batch_size, max_seq, max_seq, hidden_dim)
-        # # lstm_reply_rep = feature_out.unsqueeze(1).expand(batch_size, max_seq, max_seq, hidden_dim)
-        # # lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
-        #
-        # # pair_scores = self.pair2score(lstm_pair_rep)
-        #
-        # x = self.pair2score_first(lstm_pair_rep)
-        # y = F.relu(x)
-        # # y = self.pair2score_second(y)
-        # # y = F.relu(y)
-        # pair_scores = self.pair2score_final(y)
-        # pair_scores = F.log_softmax(pair_scores, dim=3)
-        # # pair_scores = pair_scores.view(-1, 2)
-        # # print(pair_scores.size())
-
 
 
         pairIdx = torch.argmax(pair_scores, dim=3).unsqueeze(3)
 
-        # sigmoid = nn.Sigmoid()
-        # pair_scores=sigmoid(pair_scores)
-        # t=0.5
-        # # print(pair_scores)
-        # pairIdx = (pair_scores>t).float()
-        # print("pairIdx:  ", pairIdx, pairIdx.size())
         return pairIdx
 
 

@@ -46,10 +46,7 @@ class NNCRF(nn.Module):
         :param tags: (batch_size x max_seq_len)
         :return: the total negative log-likelihood loss
         """
-        # print("sents: ",sents)
         _,lstm_scores,pair_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens,tags,review_index, reply_index, pairs,pair_padding, max_review_id)
-        # print("lstm_scores: ", lstm_scores)
-        # lstm_scores = self.encoder(sent_emb_tensor, sent_seq_lens, chars, char_seq_lens)
         batch_size = sent_emb_tensor.size(0)
         sent_len = sent_emb_tensor.size(1)
         maskTemp = torch.arange(1, sent_len + 1, dtype=torch.long).view(1, sent_len).expand(batch_size, sent_len).to(self.device)
@@ -57,8 +54,9 @@ class NNCRF(nn.Module):
         unlabed_score, labeled_score, pair_loss =  self.inferencer(lstm_scores, pair_scores, sent_seq_lens, tags, mask, pairs,pair_padding)
         # print('unlabed_score:  ',unlabed_score.size(),unlabed_score)
         # print('labeled_score:  ',labeled_score.size(),labeled_score)
-        print('loss:', unlabed_score - labeled_score, pair_loss)
+        # print('loss:', unlabed_score - labeled_score, pair_loss)
         return (unlabed_score - labeled_score) + pair_loss
+        # return (unlabed_score - labeled_score)
         # return pair_loss
 
     def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
