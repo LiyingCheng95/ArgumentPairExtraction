@@ -62,8 +62,6 @@ class LinearCRF(nn.Module):
         return unlabed_score, labeled_score, pair_loss
 
     def calculate_pair_loss(self, y: torch.Tensor, pair_scores: torch.Tensor, pair_padding: torch.Tensor) -> torch.Tensor:
-        # print(pair_scores)
-
         pair_scores = pair_scores.view(-1, 2)
         criterion = nn.CrossEntropyLoss(reduction='sum')
         # criterion = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([0.1]), reduction='sum')
