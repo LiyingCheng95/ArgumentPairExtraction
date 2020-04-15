@@ -72,14 +72,22 @@ class Reader:
                 ori_sents.append(sent)
                 if type == 'Review':
                     type_id = 0
-                    review_idx.append(sent_idx)
+                    if label[0] != 'O':
+                        review_idx.append(sent_idx)
+                    # else:
+                    #     review_idx.append(0)
                     max_review_id += 1
                 else:
                     type_id = 1
                     reply_idx.append(sent_idx)
+
+
+
                 types.append(type_id)
 
                 sent_idx+=1
+
+
                 # if self.digit2zero:
                 #     sent = re.sub('\d', '0', sent) # replace digit with 0.
                 sents.append(sent)
