@@ -111,9 +111,9 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         dev_metrics = evaluate_model(config, model, dev_batches, "dev", dev_insts)
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
         # print(test_insts.prediction)
-        # if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]): # task 1 & task 2
+        if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]): # task 1 & task 2
         # if dev_metrics[-2] > best_dev[-1]: # task 2
-        if dev_metrics[2] > best_dev[0]: # task 1
+        # if dev_metrics[2] > best_dev[0]: # task 1
             print("saving the best model...")
             no_incre_dev = 0
             best_dev[0] = dev_metrics[2]
@@ -163,20 +163,53 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         one_batch_insts = insts[batch_idx * batch_size:(batch_idx + 1) * batch_size]
         # print(len(one_batch_insts))
         batch_max_scores, batch_max_ids, pair_ids = model.decode(batch)
+
         metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-6], batch[2], config.idx2labels)
-        # print(pair_ids.size(), batch[-2].size())
-        #pair_metrics+= evaluate_pairs(one_batch_insts, pair_ids, batch[-2].unsqueeze(3))
-        # print(batch_max_ids.size(),pair_ids.size())
+        word_seq_lens = batch[2].tolist()
+        for batch_id in range(batch_max_ids.size()[0]):
+            # print('batch_max_ids[batch_id]:  ',batch_max_ids[batch_id].size(),batch_max_ids[batch_id])
+            length = word_seq_lens[batch_id]
+            prediction = batch_max_ids[batch_id][:length]
+            prediction = torch.flip(prediction,dims = [0])
+
+            gold = batch[-6][batch_id][:length]
+            # gold = torch.flip(gold, dims=[0])
+
+            s_id = (prediction == 2).nonzero()
+            b_id = (prediction == 3).nonzero()
+            e_id = (prediction == 4).nonzero()
+            i_id = (prediction == 5).nonzero()
+            pred_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
+            pred_id,_ = pred_id.sort(0, descending=False)
+            pred_id = pred_id[pred_id < batch[-1][batch_id]]
+
+            s_id = (gold == 2).nonzero()
+            b_id = (gold == 3).nonzero()
+            e_id = (gold == 4).nonzero()
+            i_id = (gold == 5).nonzero()
+            gold_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
+            gold_id, _ = gold_id.sort(0, descending=False)
+            gold_id = gold_id[gold_id < batch[-1][batch_id]]
+
+            argu_id = torch.LongTensor(list(set(gold_id.tolist()).intersection(set(pred_id.tolist()))))
+            # print('gold_id', gold_id, 'pred_id', pred_id, 'argu_id', argu_id)
+
+            # print(pair_ids[batch_id].size(), batch[-3][batch_id].size())
+            one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
+            one_batch_insts[batch_id].gold2 = batch[-3][batch_id]
+
+            # print(one_batch_insts[batch_id].gold2)
+            # print(torch.sum(one_batch_insts[batch_id].pred2, dim=1))
+
+            pred2 = one_batch_insts[batch_id].pred2[argu_id]
+            gold2 = one_batch_insts[batch_id].gold2[argu_id]
 
 
-        num_review = batch[-1]
-        for inst_id in range(batch_max_ids.size()[0]):
-            # print(pair_ids[inst_id].size(), batch[-3][inst_id].size())
-            one_batch_insts[inst_id].pred2 = pair_ids[inst_id].squeeze(2)
-            one_batch_insts[inst_id].gold2 = batch[-3][inst_id]
+            # print('argu_id:  ',argu_id.size(),argu_id)
+            # print('one_batch_insts[batch_id].pred2:  ',one_batch_insts[batch_id].pred2.size(),one_batch_insts[batch_id].pred2)
 
-            gold_pairs = one_batch_insts[inst_id].gold2.flatten()
-            pred_pairs = one_batch_insts[inst_id].pred2.flatten()
+            gold_pairs = gold2.flatten()
+            pred_pairs = pred2.flatten()
 
             # print(gold_pairs,pred_pairs)
             sum_table = gold_pairs + pred_pairs
@@ -196,12 +229,12 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
 
 
             # too slow
-            # for i in range(len(batch_max_ids[inst_id])):
+            # for i in range(len(batch_max_ids[batch_id])):
             #
             #     # if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
-            #     if i < num_review[inst_id]:
-            #         pred = pair_ids[inst_id][i].flatten()[num_review[inst_id]:]
-            #         gold = batch[-3][inst_id][i].unsqueeze(1).flatten()[num_review[inst_id]:]
+            #     if i < num_review[batch_id]:
+            #         pred = pair_ids[batch_id][i].flatten()[num_review[batch_id]:]
+            #         gold = batch[-3][batch_id][i].unsqueeze(1).flatten()[num_review[batch_id]:]
             #
             #
             #         # print(pred.size(),gold.size())

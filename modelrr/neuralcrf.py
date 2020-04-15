@@ -55,7 +55,7 @@ class NNCRF(nn.Module):
         # print('unlabed_score:  ',unlabed_score.size(),unlabed_score)
         # print('labeled_score:  ',labeled_score.size(),labeled_score)
         print('loss:', unlabed_score - labeled_score, pair_loss)
-        return (unlabed_score - labeled_score) + 0.5 * pair_loss
+        return (unlabed_score - labeled_score) + 0.2 * pair_loss
         # return (unlabed_score - labeled_score)
         # return pair_loss
 

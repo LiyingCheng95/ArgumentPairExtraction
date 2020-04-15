@@ -42,7 +42,7 @@ class Reader:
             max_review_id=0
 
 
-            for line in tqdm(f.readlines()[:50]):
+            for line in tqdm(f.readlines()[:100]):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
@@ -59,7 +59,6 @@ class Reader:
                     reply_idx = []
                     labels_pair = []
                     max_review_id=0
-
                     if len(insts) == number:
                         break
                     continue
@@ -72,11 +71,17 @@ class Reader:
                 ori_sents.append(sent)
                 if type == 'Review':
                     type_id = 0
-                    review_idx.append(sent_idx)
+                    if label[0] != 'O':
+                        review_idx.append(sent_idx)
+                    # else:
+                    #     review_idx.append(0)
                     max_review_id += 1
                 else:
                     type_id = 1
                     reply_idx.append(sent_idx)
+
+
+
                 types.append(type_id)
 
                 sent_idx+=1
