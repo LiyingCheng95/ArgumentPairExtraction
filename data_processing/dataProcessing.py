@@ -8,6 +8,9 @@ from spacy.lang.en import English
 from spacy.tokenizer import Tokenizer
 from bert_serving.client import BertClient
 import random
+from transformers import *
+import torch
+import numpy as np
 			
 def sep_sent(s):
 	nlp = English()
@@ -136,7 +139,26 @@ def main():
 def calc_vec(sents):
 	sents=sents.split('\n')
 	bc = BertClient()
-	vec = bc.encode([sents[i].split('\t')[0] for i in range(len(sents))])
+	tokenizer = BertTokenizer.from_pretrained("bert-large-cased")
+	all_tokens = []
+	for inst in [sents[i].split('\t')[0] for i in range(len(sents))]:
+		tokens = []
+		orig_to_tok_index = []  # 0 - >0, 1-> len(all word_piece)
+		for j, word in enumerate(inst.split(' ')):
+			orig_to_tok_index.append(len(tokens))
+			word_tokens = tokenizer.tokenize(word.lower())
+			for sub_token in word_tokens:
+				# orig_to_tok_index.append(i)
+				tokens.append(sub_token)
+		all_tokens.append(tokens)
+	# print('all_tokens',len(all_tokens))
+	# print(len(all_tokens[0]))
+	vec = bc.encode(all_tokens, is_tokenized=True)
+	# vec = bc.encode([sents[i].split('\t')[0] for i in range(len(sents))])
+	# print(len(vec))
+	# print(len(vec[0]))
+	# print(len(vec[1]))
+	# print(len(vec[0][0]))
 	return vec
 
 def sep_data():
@@ -154,30 +176,37 @@ def sep_data():
 		dev_data = full_data[split_1:split_2]
 		test_data = full_data[split_2:]
 
+		print('processing dev vec file ...')
 		dev = open('dev.txt', 'w')
 		vecs = []
 		for i in dev_data:
 			dev.write(i + '\n\n')
 			vec = calc_vec(i)
-			vecs.append([vec[i][0] for i in range(len(vec))])
-			print('len of vec: ', len(vecs[-1]))
-		dev_vecs = open('vec_dev.txt', 'wb')
+			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			# vecs.append([vec[i][0] for i in range(len(vec))])
+			# print('len of vec: ', len(vecs[-1]))
+		dev_vecs = open('vec_dev.pkl', 'wb')
 		pickle.dump(vecs, dev_vecs)
 		dev_vecs.close()
 		dev.close()
+		print('dev done')
 
+		print('processing test vec file ...')
 		test = open('test.txt', 'w')
 		vecs = []
 		for i in test_data:
 			test.write(i + '\n\n')
 			vec = calc_vec(i)
-			vecs.append([vec[i][0] for i in range(len(vec))])
-			print('len of vec: ', len(vecs[-1]))
-		test_vecs = open('vec_test.txt', 'wb')
+			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			# vecs.append([vec[i][0] for i in range(len(vec))])
+			# print('len of vec: ', len(vecs[-1]))
+		test_vecs = open('vec_test.pkl', 'wb')
 		pickle.dump(vecs, test_vecs)
 		test_vecs.close()
 		test.close()
+		print('test done')
 
+		print('processing train vec file ...')
 		train = open('train.txt', 'w')
 		vecs = []
 		for i in train_data:
@@ -186,12 +215,14 @@ def sep_data():
 			except:
 				continue
 			train.write(i + '\n\n')
-			vecs.append([vec[i][0] for i in range(len(vec))])
-			print('len of vec: ', len(vecs[-1]))
-		train_vecs = open('vec_train.txt', 'wb')
+			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			# vecs.append([vec[i][0] for i in range(len(vec))])
+			# print('len of vec: ', len(vecs[-1]))
+		train_vecs = open('vec_train.pkl', 'wb')
 		pickle.dump(vecs, train_vecs)
 		train_vecs.close()
 		train.close()
+		print('train done')
 
 
 
