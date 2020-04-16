@@ -40,6 +40,8 @@ class BiLSTMEncoder(nn.Module):
             print("[Model Info] LSTM Hidden Size: {}".format(config.hidden_dim))
 
         self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=1, batch_first=True, bidirectional=True).to(self.device)
+        self.lstm_token = nn.LSTM(self.input_size, 768, num_layers=1, batch_first=True,
+                            bidirectional=True).to(self.device)
 
         self.drop_lstm = nn.Dropout(config.dropout).to(self.device)
 
@@ -57,9 +59,10 @@ class BiLSTMEncoder(nn.Module):
 
 
     @overrides
-    def forward(self, sent_emb_tensor: torch.Tensor,
+    def forward(self, initial_sent_emb_tensor: torch.Tensor,
                       type_id_tensor: torch.Tensor,
                       sent_seq_lens: torch.Tensor,
+                      num_tokens: torch.Tensor,
                       batch_context_emb: torch.Tensor,
                       char_inputs: torch.Tensor,
                       char_seq_lens: torch.Tensor,
@@ -86,7 +89,24 @@ class BiLSTMEncoder(nn.Module):
         #     char_features = self.char_feature(char_inputs, char_seq_lens)
         #     word_emb = torch.cat([word_emb, char_features], 2)
         # print(type_id_tensor)
-        sent_emb_tensor = sent_emb_tensor.to(self.device)
+
+        initial_sent_emb_tensor = initial_sent_emb_tensor.to(self.device)
+
+        sorted_num_tokens, tokenIdx = num_tokens.sort(0, descending=True)
+        _, recover_token_idx = tokenIdx.sort(0, descending=False)
+        sorted_token_tensor = initial_sent_emb_tensor[tokenIdx]
+
+        packed_tokens = pack_padded_sequence(sorted_token_tensor, sorted_num_tokens, True)
+        lstm_out_token, _ = self.lstm_token(packed_tokens, None)
+        lstm_out_token, _ = pad_packed_sequence(lstm_out_token,
+                                          batch_first=True)  ## CARE: make sure here is batch_first, otherwise need to transpose.
+        lstm_out_token = self.drop_lstm(lstm_out_token)
+        sent_emb_tensor = lstm_out_token[recover_token_idx]
+
+
+
+
+
         type_emb = self.type_embedding(type_id_tensor)
 
         # sent_rep = sent_emb_tensor

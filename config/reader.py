@@ -46,7 +46,8 @@ class Reader:
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
-                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id)
+                    max_num_tokens = len(all_vecs[len(insts)][0])
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,max_num_tokens)
                     ##read vector
                     # print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)
