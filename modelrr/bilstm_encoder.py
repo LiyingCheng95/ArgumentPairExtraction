@@ -15,6 +15,8 @@ class BiLSTMEncoder(nn.Module):
     def __init__(self, config, print_info: bool = True):
         super(BiLSTMEncoder, self).__init__()
 
+        self.num_layers = 1 # ty editing
+
         self.label_size = config.label_size
         self.device = config.device
         self.use_char = config.use_char_rnn
@@ -39,8 +41,8 @@ class BiLSTMEncoder(nn.Module):
             print("[Model Info] Input size to LSTM: {}".format(self.input_size))
             print("[Model Info] LSTM Hidden Size: {}".format(config.hidden_dim))
 
-        self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=1, batch_first=True, bidirectional=True).to(self.device)
-        self.lstm_token = nn.LSTM(self.input_size, 768, num_layers=1, batch_first=True,
+        self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=self.num_layers, batch_first=True, bidirectional=True).to(self.device)
+        self.lstm_token = nn.LSTM(input_size=768, hidden_size=768 // 2, num_layers=self.num_layers, batch_first=True,
                             bidirectional=True).to(self.device)
 
         self.drop_lstm = nn.Dropout(config.dropout).to(self.device)
@@ -58,11 +60,15 @@ class BiLSTMEncoder(nn.Module):
 
 
 
+
+
+
     @overrides
-    def forward(self, initial_sent_emb_tensor: torch.Tensor,
+    def forward(self, sent_emb_tensor: torch.Tensor,
                       type_id_tensor: torch.Tensor,
                       sent_seq_lens: torch.Tensor,
                       num_tokens: torch.Tensor,
+                initial_sent_emb_tensor: torch.Tensor,
                       batch_context_emb: torch.Tensor,
                       char_inputs: torch.Tensor,
                       char_seq_lens: torch.Tensor,
@@ -91,17 +97,58 @@ class BiLSTMEncoder(nn.Module):
         # print(type_id_tensor)
 
         initial_sent_emb_tensor = initial_sent_emb_tensor.to(self.device)
+        # (batch_size * max_seq * max_tokens * 768)
 
-        sorted_num_tokens, tokenIdx = num_tokens.sort(0, descending=True)
+        # sorted_num_tokens, tokenIdx = num_tokens.sort(0, descending=True) # num_tokens is 10 * paragraph_length
+        # print(num_tokens.size())
+        # print(num_tokens)
+        # _, recover_token_idx = tokenIdx.sort(0, descending=False)
+        # sorted_token_tensor = initial_sent_emb_tensor[tokenIdx]
+
+
+
+        # for instance_idx in range(len(initial_sent_emb_tensor)):
+        #     instance_sent_emb_tensor = initial_sent_emb_tensor[instance_idx][:sent_seq_lens[instance_idx]]
+        #
+        #     sorted_num_tokens, tokenIdx = num_tokens[instance_idx][:sent_seq_lens[instance_idx]].sort(0, descending=True)
+        #     _, recover_token_idx = tokenIdx.sort(0, descending=False)
+        #     sorted_sent_emb_tensor = instance_sent_emb_tensor[tokenIdx]
+        #
+        #     packed_tokens = pack_padded_sequence(sorted_sent_emb_tensor, sorted_num_tokens, True)
+        #     _, (h_n, _) = self.lstm_token(packed_tokens, None) # hidden is of size
+        #     h_n = self.drop_lstm(h_n)
+        #     print(h_n.size())
+        #     h_n = h_n.view(self.num_layers, 2, len(instance_sent_emb_tensor), 768//2)
+        #     print(h_n.size())
+        #     instance_result = torch.cat((h_n[-1, 0],h_n[-1, 1]), dim=1) # of size (length of sentence * 768)
+        #     instance_result = instance_result[recover_token_idx]
+        #     sent_emb_tensor[instance_idx, :sent_seq_lens[instance_idx], :] = instance_result
+
+        initial_sent_emb_tensor_flatten = initial_sent_emb_tensor.view(-1, initial_sent_emb_tensor.size()[2], 768)
+        num_tokens_flatten = num_tokens.view(-1)
+        sorted_num_tokens, tokenIdx = num_tokens_flatten.sort(0, descending=True)
         _, recover_token_idx = tokenIdx.sort(0, descending=False)
-        sorted_token_tensor = initial_sent_emb_tensor[tokenIdx]
+        sorted_sent_emb_tensor_flatten = initial_sent_emb_tensor_flatten[tokenIdx]
+        packed_tokens = pack_padded_sequence(sorted_sent_emb_tensor_flatten, sorted_num_tokens, True)
+        _, (h_n, _) = self.lstm_token(packed_tokens, None)
+        h_n = self.drop_lstm(h_n)
+        # print(h_n.size())
+        h_n = h_n.view(self.num_layers, 2, len(initial_sent_emb_tensor_flatten), 768//2)
+        # print(h_n.size())
+        instance_result = torch.cat((h_n[-1, 0],h_n[-1, 1]), dim=1) # of size (length of sentence * 768)
+        print(instance_result.size())
+        instance_result = instance_result[recover_token_idx].view(initial_sent_emb_tensor.size()[0], initial_sent_emb_tensor.size()[1], 768)
+        sent_emb_tensor = instance_result
 
-        packed_tokens = pack_padded_sequence(sorted_token_tensor, sorted_num_tokens, True)
-        lstm_out_token, _ = self.lstm_token(packed_tokens, None)
-        lstm_out_token, _ = pad_packed_sequence(lstm_out_token,
-                                          batch_first=True)  ## CARE: make sure here is batch_first, otherwise need to transpose.
-        lstm_out_token = self.drop_lstm(lstm_out_token)
-        sent_emb_tensor = lstm_out_token[recover_token_idx]
+
+
+
+        # print(initial_sent_emb_tensor.size())
+
+
+        # print('lstm_out_token, ', lstm_out_token.size())
+
+        # sent_emb_tensor = lstm_out_token[recover_token_idx]
 
 
 
@@ -123,6 +170,7 @@ class BiLSTMEncoder(nn.Module):
         lstm_out, _ = self.lstm(packed_words, None)
         lstm_out, _ = pad_packed_sequence(lstm_out, batch_first=True)  ## CARE: make sure here is batch_first, otherwise need to transpose.
         feature_out = self.drop_lstm(lstm_out)
+        # print('feature_out, ', feature_out.size())
 
         outputs = self.hidden2tag(feature_out)
         feature_out = feature_out[recover_idx]

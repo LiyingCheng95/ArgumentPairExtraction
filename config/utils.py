@@ -34,7 +34,7 @@ def batching_list_instances(config: Config, insts: List[Instance]):
 
     return batched_data
 
-def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
+def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
 
     """
     batching these instances together and return tensors. The seq_tensors for word and char contain their word id and char id.
@@ -54,8 +54,11 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
     sent_seq_len = torch.LongTensor(list(map(lambda inst: len(inst.input.sents), batch_data)))
     max_seq_len = sent_seq_len.max()
 
-    num_tokens = torch.LongTensor(list(map(lambda inst: len(inst.max_num_tokens), batch_data)))
-    max_tokens = num_tokens.max()
+    # num_tokens = torch.LongTensor(list(map(lambda inst: inst.max_num_tokens, batch_data)))
+    # max_tokens = num_tokens.max()
+
+    num_tokens = list(map(lambda inst: inst.num_tokens, batch_data)) # 2-dimension
+    max_tokens = max([max(num_token) for num_token in num_tokens])
 
     # NOTE: Use 1 here because the CharBiLSTM accepts
     char_seq_len = torch.LongTensor([list(map(len, inst.input.sents)) + [1] * (int(max_seq_len) - len(inst.input.sents)) for inst in batch_data])
@@ -77,10 +80,13 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     char_seq_tensor = torch.zeros((batch_size, max_seq_len, max_char_seq_len), dtype=torch.long)
 
-    sent_emb_tensor = torch.zeros((batch_size, max_seq_len, max_tokens, emb_size), dtype=torch.float32)
+    initial_sent_emb_tensor = torch.zeros((batch_size, max_seq_len, max_tokens, emb_size), dtype=torch.float32)
+    sent_emb_tensor = torch.zeros((batch_size, max_seq_len, emb_size), dtype=torch.float32)
+
     # input = torch.zeros((batch_size, num_sents, emb_size))
 
     type_id_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
+    num_tokens_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
 
     pair_tensor = torch.zeros((batch_size,max_seq_len,max_seq_len), dtype = torch.float32)
     pair_padding_tensor = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
@@ -102,6 +108,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
             review_idx_tensor[idx, torch.LongTensor(batch_data[idx].review_idx)] = torch.LongTensor(batch_data[idx].review_idx)
             reply_idx_tensor[idx, batch_data[idx].max_review_id:sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].reply_idx)
             type_id_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].type)
+            num_tokens_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].num_tokens)
 
         if config.context_emb != ContextEmb.none:
             context_emb_tensor[idx, :sent_seq_len[idx], :] = torch.from_numpy(batch_data[idx].elmo_vec)
@@ -112,7 +119,8 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
 
         for sent_idx in range(sent_seq_len[idx]):
-            sent_emb_tensor[idx, sent_idx, :num_tokens[idx, sent_idx], :emb_size] = torch.Tensor(batch_data[idx].vec[sent_idx])
+            for token_idx in range(num_tokens[idx][sent_idx]):
+                initial_sent_emb_tensor[idx, sent_idx, token_idx, :emb_size] = torch.Tensor(batch_data[idx].vec[sent_idx][token_idx])
 
             # print('sent_emb_tensor', sent_emb_tensor[idx, sent_idx, 0])
             char_seq_tensor[idx, sent_idx, :char_seq_len[idx, sent_idx]] = torch.LongTensor(batch_data[idx].char_ids[sent_idx])
@@ -151,7 +159,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor, torch.
 
     pair_tensor = pair_tensor.to(config.device)
 
-    return sent_emb_tensor, type_id_tensor, sent_seq_len, num_tokens, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, pair_padding_tensor, max_review_tensor
+    return sent_emb_tensor, type_id_tensor, sent_seq_len, num_tokens_tensor, initial_sent_emb_tensor, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, pair_padding_tensor, max_review_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:

@@ -25,7 +25,7 @@ class Reader:
         print("Reading file: " + file)
         insts = []
 
-        f_vec = open( file[:8]+'vec_'+file[8:], 'rb')
+        f_vec = open( file[:8]+'vec_test.pkl', 'rb')
         all_vecs = pickle.load(f_vec)
         f_vec.close
 
@@ -42,12 +42,13 @@ class Reader:
             max_review_id=0
 
 
-            for line in tqdm(f.readlines()[:100]):
+            for line in tqdm(f.readlines()[:50]):
                 line = line.rstrip()
                 if line == "":
                     vecs=all_vecs[len(insts)]
-                    max_num_tokens = len(all_vecs[len(insts)][0])
-                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,max_num_tokens)
+                    # max_num_tokens = len(vecs[0])
+                    num_tokens = [len(vecs[i]) for i in range(len(vecs))]
+                    inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,num_tokens)
                     ##read vector
                     # print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)

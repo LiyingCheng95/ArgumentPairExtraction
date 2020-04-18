@@ -27,6 +27,8 @@ class NNCRF(nn.Module):
     def forward(self, sent_emb_tensor: torch.Tensor,
                     type_id_tensor: torch.Tensor,
                     sent_seq_lens: torch.Tensor,
+                    num_tokens:torch.Tensor,
+                    initial_sent_emb_tensor: torch.Tensor,
                     batch_context_emb: torch.Tensor,
                     chars: torch.Tensor,
                     char_seq_lens: torch.Tensor,
@@ -46,7 +48,7 @@ class NNCRF(nn.Module):
         :param tags: (batch_size x max_seq_len)
         :return: the total negative log-likelihood loss
         """
-        _,lstm_scores,pair_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, batch_context_emb, chars, char_seq_lens,tags,review_index, reply_index, pairs,pair_padding, max_review_id)
+        _,lstm_scores,pair_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, num_tokens, initial_sent_emb_tensor, batch_context_emb, chars, char_seq_lens,tags,review_index, reply_index, pairs,pair_padding, max_review_id)
         batch_size = sent_emb_tensor.size(0)
         sent_len = sent_emb_tensor.size(1)
         maskTemp = torch.arange(1, sent_len + 1, dtype=torch.long).view(1, sent_len).expand(batch_size, sent_len).to(self.device)
@@ -59,14 +61,14 @@ class NNCRF(nn.Module):
         # return (unlabed_score - labeled_score)
         # return pair_loss
 
-    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def decode(self, batchInput: Tuple[torch.Tensor, torch.Tensor, torch.Tensor,  torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Decode the batch input
         :param batchInput:
         :return:
         """
-        wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor, review_index, reply_index, pairs, pair_padding, max_review_id = batchInput
-        feature_out,features, pair_scores = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, batch_context_emb,charSeqTensor,charSeqLengths, tagSeqTensor, review_index, reply_index, pairs, pair_padding, max_review_id)
+        wordSeqTensor, typeTensor, wordSeqLengths, num_tokens, initial_wordSeqTensor,  batch_context_emb, charSeqTensor, charSeqLengths, tagSeqTensor, review_index, reply_index, pairs, pair_padding, max_review_id = batchInput
+        feature_out,features, pair_scores = self.encoder(wordSeqTensor, typeTensor, wordSeqLengths, num_tokens, initial_wordSeqTensor, batch_context_emb,charSeqTensor,charSeqLengths, tagSeqTensor, review_index, reply_index, pairs, pair_padding, max_review_id)
         bestScores, decodeIdx = self.inferencer.decode(features, wordSeqLengths)
         # print ('decodeIdx:  ', decodeIdx)
         # pairIdx = self.inferencer.pair_decode(feature_out, max_review_id, decodeIdx, wordSeqLengths, review_index,reply_index)
