@@ -140,7 +140,7 @@ def calc_vec(sents):
 	sents=sents.split('\n')
 	bc = BertClient()
 	tokenizer = BertTokenizer.from_pretrained("bert-large-cased")
-	all_tokens = []
+	all_vecs = []
 	for inst in [sents[i].split('\t')[0] for i in range(len(sents))]:
 		tokens = []
 		orig_to_tok_index = []  # 0 - >0, 1-> len(all word_piece)
@@ -150,16 +150,17 @@ def calc_vec(sents):
 			for sub_token in word_tokens:
 				# orig_to_tok_index.append(i)
 				tokens.append(sub_token)
-		all_tokens.append(tokens)
+		vec = bc.encode([tokens], is_tokenized=True)
+		all_vecs.append(vec)
 	# print('all_tokens',len(all_tokens))
 	# print(len(all_tokens[0]))
-	vec = bc.encode(all_tokens, is_tokenized=True)
+
 	# vec = bc.encode([sents[i].split('\t')[0] for i in range(len(sents))])
 	# print(len(vec))
 	# print(len(vec[0]))
 	# print(len(vec[1]))
 	# print(len(vec[0][0]))
-	return vec
+	return all_vecs
 
 def sep_data():
 	with open("ReviewRebuttal.txt", "r") as full_data:
@@ -182,7 +183,7 @@ def sep_data():
 		for i in dev_data:
 			dev.write(i + '\n\n')
 			vec = calc_vec(i)
-			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			vecs.append([vec[j][0][1:-1] for j in range(len(vec))])
 			# vecs.append([vec[i][0] for i in range(len(vec))])
 			# print('len of vec: ', len(vecs[-1]))
 		dev_vecs = open('vec_dev.pkl', 'wb')
@@ -197,7 +198,7 @@ def sep_data():
 		for i in test_data:
 			test.write(i + '\n\n')
 			vec = calc_vec(i)
-			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			vecs.append([vec[j][0][1:-1] for j in range(len(vec))])
 			# vecs.append([vec[i][0] for i in range(len(vec))])
 			# print('len of vec: ', len(vecs[-1]))
 		test_vecs = open('vec_test.pkl', 'wb')
@@ -215,7 +216,7 @@ def sep_data():
 			except:
 				continue
 			train.write(i + '\n\n')
-			vecs.append([vec[i][1:-1] for i in range(len(vec))])
+			vecs.append([vec[j][0][1:-1] for j in range(len(vec))])
 			# vecs.append([vec[i][0] for i in range(len(vec))])
 			# print('len of vec: ', len(vecs[-1]))
 		train_vecs = open('vec_train.pkl', 'wb')
