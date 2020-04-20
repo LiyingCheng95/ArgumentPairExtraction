@@ -129,6 +129,8 @@ class BiLSTMEncoder(nn.Module):
         sorted_num_tokens, tokenIdx = num_tokens_flatten.sort(0, descending=True)
         _, recover_token_idx = tokenIdx.sort(0, descending=False)
         sorted_sent_emb_tensor_flatten = initial_sent_emb_tensor_flatten[tokenIdx]
+        # print(sorted_num_tokens)
+        sorted_num_tokens[sorted_num_tokens<=0]=1
         packed_tokens = pack_padded_sequence(sorted_sent_emb_tensor_flatten, sorted_num_tokens, True)
         _, (h_n, _) = self.lstm_token(packed_tokens, None)
         h_n = self.drop_lstm(h_n)
@@ -136,7 +138,7 @@ class BiLSTMEncoder(nn.Module):
         h_n = h_n.view(self.num_layers, 2, len(initial_sent_emb_tensor_flatten), 768//2)
         # print(h_n.size())
         instance_result = torch.cat((h_n[-1, 0],h_n[-1, 1]), dim=1) # of size (length of sentence * 768)
-        print(instance_result.size())
+        # print(instance_result.size())
         instance_result = instance_result[recover_token_idx].view(initial_sent_emb_tensor.size()[0], initial_sent_emb_tensor.size()[1], 768)
         sent_emb_tensor = instance_result
 
