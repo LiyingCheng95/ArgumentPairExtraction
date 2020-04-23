@@ -49,8 +49,8 @@ class NNCRF(nn.Module):
         :return: the total negative log-likelihood loss
         """
         _,lstm_scores,pair_scores = self.encoder(sent_emb_tensor, type_id_tensor, sent_seq_lens, num_tokens, initial_sent_emb_tensor, batch_context_emb, chars, char_seq_lens,tags,review_index, reply_index, pairs,pair_padding, max_review_id)
-        batch_size = sent_emb_tensor.size(0)
-        sent_len = sent_emb_tensor.size(1)
+        batch_size = initial_sent_emb_tensor.size(0)
+        sent_len = initial_sent_emb_tensor.size(1)
         maskTemp = torch.arange(1, sent_len + 1, dtype=torch.long).view(1, sent_len).expand(batch_size, sent_len).to(self.device)
         mask = torch.le(maskTemp, sent_seq_lens.view(batch_size, 1).expand(batch_size, sent_len)).to(self.device)
         unlabed_score, labeled_score, pair_loss =  self.inferencer(lstm_scores, pair_scores, sent_seq_lens, tags, mask, pairs,pair_padding)
