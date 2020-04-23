@@ -25,7 +25,8 @@ class Reader:
         print("Reading file: " + file)
         insts = []
 
-        f_vec = open( file[:8]+'vec_test.pkl', 'rb')
+        # f_vec = open(file[:8]+'vec_test.pkl', 'rb')
+        f_vec = open(file[:8] + 'vec_' + file[8:-3] + 'pkl', 'rb')
         all_vecs = pickle.load(f_vec)
         f_vec.close
 
@@ -40,17 +41,20 @@ class Reader:
             reply_idx = []
             labels_pair = []
             max_review_id=0
+            new_index = 0
 
+            f= f.readlines()
 
-            for line in tqdm(f.readlines()[:50]):
+            for line_idx, line in enumerate(tqdm(f)):
                 line = line.rstrip()
                 if line == "":
+                    new_index =0
                     vecs=all_vecs[len(insts)]
                     # max_num_tokens = len(vecs[0])
                     num_tokens = [len(vecs[i]) for i in range(len(vecs))]
                     inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,num_tokens)
                     ##read vector
-                    # print(review_idx,reply_idx,max_review_id,labels_pair)
+                    print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)
                     sents = []
                     ori_sents = []
@@ -80,13 +84,37 @@ class Reader:
                     max_review_id += 1
                 else:
                     type_id = 1
-                    reply_idx.append(sent_idx)
+                    # print(line_idx,len(f),f[line_idx+1])
+                    if line_idx<len(f)-2:
+                        if label[0] != 'O' or (label[0]=='O' and ( (new_index>0 and f[line_idx-1].rstrip().split('\t')[1][0] != 'O') or
+                                                               (new_index>1 and f[line_idx-2].rstrip().split('\t')[1][0] != 'O') or
+                                                               (f[line_idx+1]!='' and f[line_idx+1].rstrip().split('\t')[1][0] != 'O') or
+                                                               (f[line_idx+1]!='' and f[line_idx+2]!='' and f[line_idx+2].rstrip().split('\t')[1][0] != 'O' ))):
+                            reply_idx.append(sent_idx)
+                    elif line_idx==len(f)-2:
+                        if f[line_idx + 1].rstrip() != '':
+                            if label[0] != 'O' or (label[0] == 'O' and (
+                                    (new_index > 0 and f[line_idx - 1].rstrip().split('\t')[1][0] != 'O') or
+                                    (new_index > 1 and f[line_idx - 2].rstrip().split('\t')[1][0] != 'O') or
+                                    (f[line_idx + 1] != '' and f[line_idx + 1].rstrip().split('\t')[1][0] != 'O'))):
+                                reply_idx.append(sent_idx)
+                        else:
+                            if label[0] != 'O' or (label[0] == 'O' and (
+                                    (new_index > 0 and f[line_idx - 1].rstrip().split('\t')[1][0] != 'O') or
+                                    (new_index > 1 and f[line_idx - 2].rstrip().split('\t')[1][0] != 'O'))):
+                                reply_idx.append(sent_idx)
 
+
+                    elif line_idx==len(f)-1:
+                        if label[0] != 'O' or (label[0]=='O' and ( (new_index>0 and f[line_idx-1].rstrip().split('\t')[1][0] != 'O') or
+                                                               (new_index>1 and f[line_idx-2].rstrip().split('\t')[1][0] != 'O'))):
+                            reply_idx.append(sent_idx)
 
 
                 types.append(type_id)
 
                 sent_idx+=1
+                new_index+=1
 
 
                 # if self.digit2zero:
@@ -101,6 +129,8 @@ class Reader:
                 labels.append(label)
                 labels_pair.append(label_pair)
         print("number of sentences: {}".format(len(insts)))
+        all_vecs = 0
+        vecs = 0
         return insts
 
 

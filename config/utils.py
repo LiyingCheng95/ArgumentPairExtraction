@@ -81,7 +81,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     char_seq_tensor = torch.zeros((batch_size, max_seq_len, max_char_seq_len), dtype=torch.long)
 
     initial_sent_emb_tensor = torch.zeros((batch_size, max_seq_len, max_tokens, emb_size), dtype=torch.float32)
-    sent_emb_tensor = torch.zeros((batch_size, max_seq_len, emb_size), dtype=torch.float32)
+    sent_emb_tensor = torch.zeros((1,), dtype=torch.float32)
 
     # input = torch.zeros((batch_size, num_sents, emb_size))
 
@@ -106,7 +106,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
             max_review_tensor[idx]=batch_data[idx].max_review_id
             label_seq_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].output_ids)
             review_idx_tensor[idx, torch.LongTensor(batch_data[idx].review_idx)] = torch.LongTensor(batch_data[idx].review_idx)
-            reply_idx_tensor[idx, batch_data[idx].max_review_id:sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].reply_idx)
+            reply_idx_tensor[idx, torch.LongTensor(batch_data[idx].reply_idx)] = torch.LongTensor(batch_data[idx].reply_idx)
             type_id_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].type)
             num_tokens_tensor[idx, :sent_seq_len[idx]] = torch.LongTensor(batch_data[idx].num_tokens)
 
@@ -115,7 +115,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
         # print('type id tensor', type_id_tensor[idx])
         # print('max review id', batch_data[idx].max_review_id, len(batch_data[idx].review_idx))
         # pair_padding_tensor[idx, :len(batch_data[idx].review_idx), batch_data[idx].max_review_id:sent_seq_len[idx]] = 1.0
-        pair_padding_tensor[idx, torch.LongTensor(batch_data[idx].review_idx), batch_data[idx].max_review_id:sent_seq_len[idx]] = 1.0
+        # pair_padding_tensor[idx, torch.LongTensor(batch_data[idx].review_idx), torch.LongTensor(batch_data[idx].reply_idx)] = 1.0
 
 
         for sent_idx in range(sent_seq_len[idx]):
@@ -131,8 +131,17 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
                             and batch_data[idx].labels_pair[sent_idx] != 0 \
                             and batch_data[idx].type[sent_idx] == 0 and batch_data[idx].type[sent_idx2] == 1:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
-                    # if batch_data[idx].type[sent_idx]==1 and batch_data[idx].type[sent_idx2]==2:
-                    #     pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
+                    # if batch_data[idx].type[sent_idx]==0 and batch_data[idx].type[sent_idx2]==1:
+
+                        pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
+                        if batch_data[idx].type[sent_idx2 - 1] == 1:
+                            pair_padding_tensor[idx, sent_idx, sent_idx2-1] = 1.0
+                        if batch_data[idx].type[sent_idx2 - 2] == 1:
+                            pair_padding_tensor[idx, sent_idx, sent_idx2 - 2] = 1.0
+                        if batch_data[idx].type[sent_idx2 +1 ] <  sent_seq_len[idx]:
+                            pair_padding_tensor[idx, sent_idx, sent_idx2 + 1] = 1.0
+                        if batch_data[idx].type[sent_idx2 + 2] <  sent_seq_len[idx]:
+                            pair_padding_tensor[idx, sent_idx, sent_idx2 + 2] = 1.0
         # print("sum:", pair_padding_tensor)
         # print((pair_padding_tensor[idx]==pair_padding_tensor1[idx]).all())
 

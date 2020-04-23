@@ -191,7 +191,8 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             gold_id, _ = gold_id.sort(0, descending=False)
             gold_id = gold_id[gold_id < batch[-1][batch_id]]
 
-            argu_id = torch.LongTensor(list(set(gold_id.tolist()).intersection(set(pred_id.tolist()))))
+            # argu_id = torch.LongTensor(list(set(gold_id.tolist()).intersection(set(pred_id.tolist()))))
+            argu_id = torch.LongTensor(list(set(gold_id.tolist())))
             # print('gold_id', gold_id, 'pred_id', pred_id, 'argu_id', argu_id)
 
             # print(pair_ids[batch_id].size(), batch[-3][batch_id].size())
