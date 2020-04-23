@@ -9,15 +9,20 @@ from spacy.tokenizer import Tokenizer
 from bert_serving.client import BertClient
 import random
 from transformers import *
+import re
 import torch
 import numpy as np
 			
 def sep_sent(s):
 	nlp = English()
+
 	sentencizer = nlp.create_pipe("sentencizer")
 	nlp.add_pipe(sentencizer)
+	s = s.replace('by Yu et al.', 'by Yu et al..').replace('by Wen et al.', 'by Wen et al..').replace('et. al.','et al').replace('et al.,','et al').replace('et al.','et al')
+	# s = re.sub('et al. [^A-Z]]','et al [A-Z]',s)
 	doc = nlp(s)
-	return list(doc.sents)
+	doc = list(doc.sents)
+	return doc
 
 def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 	bio=0
@@ -60,7 +65,7 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 			# print("j: ",j[1])
 			# print("i: ",i)
 			
-			if i in j[1] and i!='':
+			if i in j[1].replace('et. al.','et al ') and i!='':
 				# print(j2tag,j[2])
 				if j2tag!=j[2] or bio==0:
 
@@ -97,7 +102,7 @@ def tagging_sequence(outputfile,corpus,arguments_corpus,category):
 
 
 def main():
-	with open('ReviewRebuttal.txt', 'w') as outputfile:
+	with open('ReviewRebuttalnew.txt', 'w') as outputfile:
 
 		with open('file2.csv') as csvfile2:
 			file2 = csv.reader(csvfile2, delimiter=',')
@@ -163,7 +168,7 @@ def calc_vec(sents):
 	return all_vecs
 
 def sep_data():
-	with open("ReviewRebuttal.txt", "r") as full_data:
+	with open("ReviewRebuttalnew.txt", "r") as full_data:
 		full_data = full_data.read().split('\n\n')
 		print(len(full_data))
 		full_data.sort()  # make sure that the filenames have a fixed order before shuffling
