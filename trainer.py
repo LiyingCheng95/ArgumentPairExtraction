@@ -1,7 +1,7 @@
 import argparse
 import random
 import numpy as np
-from config import Reader, Config, ContextEmb, lr_decay, simple_batching, evaluate_batch_insts, get_optimizer, write_results, batching_list_instances, evaluate_pairs
+from config import Reader, Config, ContextEmb, lr_decay, simple_batching, evaluate_batch_insts, get_optimizer, write_results, batching_list_instances, evaluate_batch_insts_e2e
 import time
 from modelrr.neuralcrf import NNCRF
 import torch
@@ -154,7 +154,7 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
 def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, insts: List[Instance]):
     ## evaluation
     tp, fp, tn, fn = 0, 0, 0, 0
-    metrics = np.asarray([0, 0, 0], dtype=int)
+    metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.asarray([0, 0, 0], dtype=int)
     pair_metrics = np.asarray([0, 0, 0], dtype=int)
     batch_idx = 0
     batch_size = config.batch_size
@@ -168,6 +168,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         batch_max_scores, batch_max_ids, pair_ids = model.decode(processed_batched_data)
 
         metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels)
+        metrics_e2e += evaluate_batch_insts_e2e(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels, processed_batched_data[-3], pair_ids)
         word_seq_lens = processed_batched_data[2].tolist()
         for batch_id in range(batch_max_ids.size()[0]):
             # print('batch_max_ids[batch_id]:  ',batch_max_ids[batch_id].size(),batch_max_ids[batch_id])
@@ -231,48 +232,6 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             # print(tp,tp_tmp,tn,tn_tmp,ones,zeros,fp,fn)
 
 
-
-            # too slow
-            # for i in range(len(batch_max_ids[batch_id])):
-            #
-            #     # if batch_max_ids[batch_id][i] in (2,3,4,5) and i<num_review[batch_id]:
-            #     if i < num_review[batch_id]:
-            #         pred = pair_ids[batch_id][i].flatten()[num_review[batch_id]:]
-            #         gold = batch[-3][batch_id][i].unsqueeze(1).flatten()[num_review[batch_id]:]
-            #
-            #
-            #         # print(pred.size(),gold.size())
-            #         for j in range(gold.size()[0]):
-            #             if pred[j] == 1:
-            #                 if gold[j] == 1:
-            #                     tp += 1
-            #                 else:
-            #                     fp += 1
-            #             else:
-            #                 if gold[j] == 1:
-            #                     fn += 1
-            #                 else:
-            #                     tn += 1
-
-        # pred = pair_ids.flatten()
-        # gold = batch[-2].unsqueeze(3).flatten()
-        # # print('##########################', pred.size(), gold.size())
-        # print(pred)
-        # print(gold)
-        # # print(batch_max_ids)
-        # for i in range(gold.size()[0]):
-        #     if pred[i] == 1:
-        #         if gold[i] == 1:
-        #             tp += 1
-        #         else:
-        #             fp += 1
-        #     else:
-        #         if gold[i] == 1:
-        #             fn += 1
-        #         else:
-        #             tn += 1
-
-
         batch_idx += 1
     print('tp, fp, fn, tn: ', tp, fp, fn, tn)
     precision_2 = 1.0 * tp / (tp + fp) * 100 if tp + fp != 0 else 0
@@ -283,9 +242,17 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     precision = p * 1.0 / total_predict * 100 if total_predict != 0 else 0
     recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0
     fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
-    print("[%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
+
+    p_e2e, total_predict_e2e, total_entity_e2e = metrics_e2e[0], metrics_e2e[1], metrics_e2e[2]
+    precision_e2e = p_e2e * 1.0 / total_predict_e2e * 100 if total_predict_e2e != 0 else 0
+    recall_e2e = p_e2e * 1.0 / total_entity_e2e * 100 if total_entity_e2e != 0 else 0
+    fscore_e2e = 2.0 * precision_e2e * recall_e2e / (precision_e2e + recall_e2e) if precision_e2e != 0 or recall_e2e != 0 else 0
+
+
+    print("Task1: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
     print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f, acc: %.2f" % (name, precision_2, recall_2, f1_2, acc), flush=True)
-    return [precision, recall, fscore, precision_2, recall_2, f1_2, acc]
+    print("Overall: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_e2e, recall_e2e, fscore_e2e), flush=True)
+    return [precision, recall, fscore, precision_2, recall_2, f1_2, acc, precision_e2e, recall_e2e, fscore_e2e]
 
 
 def main():
