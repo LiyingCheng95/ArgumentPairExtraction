@@ -30,7 +30,8 @@ def batching_list_instances(config: Config, insts: List[Instance]):
     batched_data = []
     for batch_id in range(total_batch):
         one_batch_insts = insts[batch_id * batch_size:(batch_id + 1) * batch_size]
-        batched_data.append(simple_batching(config, one_batch_insts))
+        # batched_data.append(simple_batching(config, one_batch_insts))
+        batched_data.append(one_batch_insts)
 
     return batched_data
 
@@ -138,9 +139,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
                             pair_padding_tensor[idx, sent_idx, sent_idx2-1] = 1.0
                         if batch_data[idx].type[sent_idx2 - 2] == 1:
                             pair_padding_tensor[idx, sent_idx, sent_idx2 - 2] = 1.0
-                        if batch_data[idx].type[sent_idx2 +1 ] <  sent_seq_len[idx]:
+                        if sent_idx2 +1 <  sent_seq_len[idx]:
                             pair_padding_tensor[idx, sent_idx, sent_idx2 + 1] = 1.0
-                        if batch_data[idx].type[sent_idx2 + 2] <  sent_seq_len[idx]:
+                        if sent_idx2 + 2 <  sent_seq_len[idx]:
                             pair_padding_tensor[idx, sent_idx, sent_idx2 + 2] = 1.0
         # print("sum:", pair_padding_tensor)
         # print((pair_padding_tensor[idx]==pair_padding_tensor1[idx]).all())

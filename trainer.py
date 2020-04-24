@@ -96,9 +96,10 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         model.zero_grad()
         if config.optimizer.lower() == "sgd":
             optimizer = lr_decay(config, optimizer, i)
-        for index in tqdm(np.random.permutation(len(batched_data)), desc="--training batch", total=len(batched_data)):
+        for index in np.random.permutation(len(batched_data)):
+            processed_batched_data = simple_batching(config,batched_data[index])
             model.train()
-            loss = model(*batched_data[index])
+            loss = model(*processed_batched_data)
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -157,22 +158,24 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     pair_metrics = np.asarray([0, 0, 0], dtype=int)
     batch_idx = 0
     batch_size = config.batch_size
-    print('insts',len(insts))
+    # print('insts',len(insts))
     for batch in batch_insts_ids:
         # print('batch_idx * batch_size:(batch_idx + 1) * batch_size', batch_idx* batch_size,(batch_idx + 1) * batch_size )
         one_batch_insts = insts[batch_idx * batch_size:(batch_idx + 1) * batch_size]
-        # print(len(one_batch_insts))
-        batch_max_scores, batch_max_ids, pair_ids = model.decode(batch)
 
-        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, batch[-6], batch[2], config.idx2labels)
-        word_seq_lens = batch[2].tolist()
+        processed_batched_data = simple_batching(config, batch)
+        # print(len(one_batch_insts))
+        batch_max_scores, batch_max_ids, pair_ids = model.decode(processed_batched_data)
+
+        metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels)
+        word_seq_lens = processed_batched_data[2].tolist()
         for batch_id in range(batch_max_ids.size()[0]):
             # print('batch_max_ids[batch_id]:  ',batch_max_ids[batch_id].size(),batch_max_ids[batch_id])
             length = word_seq_lens[batch_id]
             prediction = batch_max_ids[batch_id][:length]
             prediction = torch.flip(prediction,dims = [0])
 
-            gold = batch[-6][batch_id][:length]
+            gold = processed_batched_data[-6][batch_id][:length]
             # gold = torch.flip(gold, dims=[0])
 
             s_id = (prediction == 2).nonzero()
@@ -181,7 +184,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             i_id = (prediction == 5).nonzero()
             pred_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
             pred_id,_ = pred_id.sort(0, descending=False)
-            pred_id = pred_id[pred_id < batch[-1][batch_id]]
+            pred_id = pred_id[pred_id < processed_batched_data[-1][batch_id]]
 
             s_id = (gold == 2).nonzero()
             b_id = (gold == 3).nonzero()
@@ -189,7 +192,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             i_id = (gold == 5).nonzero()
             gold_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
             gold_id, _ = gold_id.sort(0, descending=False)
-            gold_id = gold_id[gold_id < batch[-1][batch_id]]
+            gold_id = gold_id[gold_id < processed_batched_data[-1][batch_id]]
 
             # argu_id = torch.LongTensor(list(set(gold_id.tolist()).intersection(set(pred_id.tolist()))))
             argu_id = torch.LongTensor(list(set(gold_id.tolist())))
@@ -197,7 +200,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
 
             # print(pair_ids[batch_id].size(), batch[-3][batch_id].size())
             one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
-            one_batch_insts[batch_id].gold2 = batch[-3][batch_id]
+            one_batch_insts[batch_id].gold2 = processed_batched_data[-3][batch_id]
 
             # print(one_batch_insts[batch_id].gold2)
             # print(torch.sum(one_batch_insts[batch_id].pred2, dim=1))
