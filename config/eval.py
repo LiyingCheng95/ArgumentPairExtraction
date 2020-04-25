@@ -34,7 +34,7 @@ class Span_e2e:
     A class of `Span` where we use it during evaluation.
     We construct spans for the convenience of evaluation.
     """
-    def __init__(self, left: int, right: int, type: torch.Tensor):
+    def __init__(self, left: int, right: int, type: str):
         """
         A span compose of left, right (inclusive) and its entity label.
         :param left:
@@ -46,7 +46,8 @@ class Span_e2e:
         self.type = type
 
     def __eq__(self, other):
-        return self.left == other.left and self.right == other.right and (self.type[self.type+other.type >= 0] == (other.type[self.type+other.type >= 0]).all())
+        return self.left == other.left and self.right == other.right and self.type == other.type
+        # return self.left == other.left and self.right == other.right and ((self.type[self.type+other.type >= 0]) == (other.type[self.type+other.type >= 0])).all()
 
     def __hash__(self):
         return hash((self.left, self.right, self.type))
@@ -82,7 +83,9 @@ def evaluate_batch_insts(batch_insts: List[Instance],
         prediction =[idx2label[l] for l in prediction]
         batch_insts[idx].prediction = prediction
         #convert to span
-        output_spans, output_spans_task2 = set(), set()
+
+        # gold
+        output_spans = set()
         start = -1
         for i in range(len(output)):
             if output[i].startswith("B-"):
@@ -92,6 +95,9 @@ def evaluate_batch_insts(batch_insts: List[Instance],
                 output_spans.add(Span(start, end, output[i][2:]))
             if output[i].startswith("S-"):
                 output_spans.add(Span(i, i, output[i][2:]))
+
+
+        # predict
         predict_spans = set()
         for i in range(len(prediction)):
             if prediction[i].startswith("B-"):
@@ -134,7 +140,6 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
              You can also refer as (number of correctly predicted entities, number of entities predicted, number of entities in the dataset)
     """
     p = 0
-    p_task2 = 0
     total_entity = 0
     total_predict = 0
     word_seq_lens = word_seq_lens.tolist()
@@ -147,25 +152,38 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
         prediction = [idx2label[l] for l in prediction]
         batch_insts[idx].prediction = prediction
         # convert to span
-        output_spans, output_spans_task2 = set(), set()
+
+        # gold
+        output_spans = set()
         start = -1
         for i in range(len(output)):
             if output[i].startswith("B-"):
                 start = i
             if output[i].startswith("E-"):
                 end = i
-                output_spans.add(Span_e2e(start, end, pair_gold[idx][start: end+1]))
+                pairs = pair_gold[idx][start: end+1][pair_gold[idx][start: end+1]+ pair_predict[idx].squeeze(2)[start: end+1]>=0].tolist()
+                pairs = ''.join(str(int(e)) for e in pairs)
+                output_spans.add(Span_e2e(start, end, pairs))
             if output[i].startswith("S-"):
-                output_spans.add(Span_e2e(i, i, pair_gold[idx][i: i+1]))
+                pairs = pair_gold[idx][i][pair_gold[idx][i] + pair_predict[idx].squeeze(2)[i] >= 0].tolist()
+                pairs = ''.join(str(int(e)) for e in pairs)
+                output_spans.add(Span_e2e(i, i, pairs))
+
+
+        # predict
         predict_spans = set()
         for i in range(len(prediction)):
             if prediction[i].startswith("B-"):
                 start = i
             if prediction[i].startswith("E-"):
                 end = i
-                predict_spans.add(Span_e2e(start, end, pair_predict[idx].squeeze(2)[start: end+1]))
+                pairs = pair_predict[idx].squeeze(2)[start: end+1][pair_gold[idx][start: end+1]+ pair_predict[idx].squeeze(2)[start: end+1]>=0].tolist()
+                pairs = ''.join(str(int(e)) for e in pairs)
+                predict_spans.add(Span_e2e(start, end, pairs))
             if prediction[i].startswith("S-"):
-                predict_spans.add(Span_e2e(i, i, pair_predict[idx].squeeze(2)[i: i+1]))
+                pairs = pair_predict[idx].squeeze(2)[i][pair_gold[idx][i] + pair_predict[idx].squeeze(2)[i] >= 0].tolist()
+                pairs = ''.join(str(int(e)) for e in pairs)
+                predict_spans.add(Span_e2e(i, i, pairs))
 
         total_entity += len(output_spans)
         total_predict += len(predict_spans)
