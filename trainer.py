@@ -168,24 +168,26 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
         batch_max_scores, batch_max_ids, pair_ids = model.decode(processed_batched_data)
 
         metrics += evaluate_batch_insts(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels)
-        metrics_e2e += evaluate_batch_insts_e2e(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels, processed_batched_data[-3], pair_ids)
+        # print(processed_batched_data[-1])
+        metrics_e2e += evaluate_batch_insts_e2e(one_batch_insts, batch_max_ids, processed_batched_data[-6], processed_batched_data[2], config.idx2labels, processed_batched_data[-8], pair_ids, processed_batched_data[-1])
+
         word_seq_lens = processed_batched_data[2].tolist()
         for batch_id in range(batch_max_ids.size()[0]):
             # print('batch_max_ids[batch_id]:  ',batch_max_ids[batch_id].size(),batch_max_ids[batch_id])
             length = word_seq_lens[batch_id]
-            prediction = batch_max_ids[batch_id][:length]
-            prediction = torch.flip(prediction,dims = [0])
+            # prediction = batch_max_ids[batch_id][:length]
+            # prediction = torch.flip(prediction,dims = [0])
 
             gold = processed_batched_data[-6][batch_id][:length]
             # gold = torch.flip(gold, dims=[0])
 
-            s_id = (prediction == 2).nonzero()
-            b_id = (prediction == 3).nonzero()
-            e_id = (prediction == 4).nonzero()
-            i_id = (prediction == 5).nonzero()
-            pred_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
-            pred_id,_ = pred_id.sort(0, descending=False)
-            pred_id = pred_id[pred_id < processed_batched_data[-1][batch_id]]
+            # s_id = (prediction == 2).nonzero()
+            # b_id = (prediction == 3).nonzero()
+            # e_id = (prediction == 4).nonzero()
+            # i_id = (prediction == 5).nonzero()
+            # pred_id = torch.cat([s_id, b_id, e_id, i_id]).squeeze(1)
+            # pred_id,_ = pred_id.sort(0, descending=False)
+            # pred_id = pred_id[pred_id < processed_batched_data[-1][batch_id]]
 
             s_id = (gold == 2).nonzero()
             b_id = (gold == 3).nonzero()

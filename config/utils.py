@@ -35,7 +35,7 @@ def batching_list_instances(config: Config, insts: List[Instance]):
 
     return batched_data
 
-def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
+def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor,torch.Tensor]:
 
     """
     batching these instances together and return tensors. The seq_tensors for word and char contain their word id and char id.
@@ -90,7 +90,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     num_tokens_tensor = torch.zeros((batch_size, max_seq_len), dtype=torch.long)
 
     pair_tensor = torch.zeros((batch_size,max_seq_len,max_seq_len), dtype = torch.float32)
+    pair_tensor_train = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
     pair_padding_tensor = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
+    pair_padding_train = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
     # pair_padding_tensor1 = torch.zeros((batch_size, max_seq_len, max_seq_len), dtype=torch.float32)
 
     max_review_tensor = torch.zeros((batch_size), dtype=torch.long)
@@ -132,18 +134,20 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
                             and batch_data[idx].labels_pair[sent_idx] != 0 \
                             and batch_data[idx].type[sent_idx] == 0 and batch_data[idx].type[sent_idx2] == 1:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
+                        pair_tensor_train[idx, sent_idx, sent_idx2] = 1.0
                     # if batch_data[idx].type[sent_idx]==0 and batch_data[idx].type[sent_idx2]==1:
-
+                    if batch_data[idx].labels_pair[sent_idx] != 0 and batch_data[idx].labels_pair[sent_idx2] != 0 \
+                            and batch_data[idx].type[sent_idx] == 0 and batch_data[idx].type[sent_idx2] == 1:
                         pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
-                        if batch_data[idx].type[sent_idx2 - 1] == 1:
-                            pair_padding_tensor[idx, sent_idx, sent_idx2-1] = 1.0
-                        if batch_data[idx].type[sent_idx2 - 2] == 1:
-                            pair_padding_tensor[idx, sent_idx, sent_idx2 - 2] = 1.0
-                        if sent_idx2 +1 <  sent_seq_len[idx]:
-                            pair_padding_tensor[idx, sent_idx, sent_idx2 + 1] = 1.0
-                        if sent_idx2 + 2 <  sent_seq_len[idx]:
-                            pair_padding_tensor[idx, sent_idx, sent_idx2 + 2] = 1.0
-        # print("sum:", pair_padding_tensor)
+                        # if batch_data[idx].type[sent_idx2 - 1] == 1:
+                        #     pair_padding_tensor[idx, sent_idx, sent_idx2-1] = 1.0
+                        # if batch_data[idx].type[sent_idx2 - 2] == 1:
+                        #     pair_padding_tensor[idx, sent_idx, sent_idx2 - 2] = 1.0
+                        # if sent_idx2 +1 <  sent_seq_len[idx]:
+                        #     pair_padding_tensor[idx, sent_idx, sent_idx2 + 1] = 1.0
+                        # if sent_idx2 + 2 <  sent_seq_len[idx]:
+                        #     pair_padding_tensor[idx, sent_idx, sent_idx2 + 2] = 1.0
+        # print("sum:", pair_padding_tensor.sum())
         # print((pair_padding_tensor[idx]==pair_padding_tensor1[idx]).all())
 
         # print('sum of pair padding tensor', torch.sum(pair_padding_tensor[idx]),torch.sum(pair_padding_tensor1[idx]))
@@ -153,8 +157,29 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
         # print(pair_tensor[idx,])
         for sentIdx in range(sent_seq_len[idx], max_seq_len):
             char_seq_tensor[idx, sentIdx, 0: 1] = torch.LongTensor([config.char2idx[PAD]])   ###because line 119 makes it 1, every single character should have a id. but actually 0 is enough
+
+    tmp = pair_padding_tensor + pair_tensor
+
+    for idx in range(batch_size):
+
+        for sent_idx in range(sent_seq_len[idx]):
+
+            if (tmp[idx,sent_idx,:]==1).sum()>=4:
+                valid_idx = (tmp[idx,sent_idx,:]==1).nonzero().view(-1)
+                choice = torch.multinomial(valid_idx.float(), 4)
+                # print((tmp[idx, sent_idx, :] == 1).sum())
+                # print(valid_idx[choice])
+                pair_padding_train[idx,sent_idx, valid_idx[choice]]=1
+            else:
+                pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
+    # print(pair_padding_train.sum())
+
+
+    pair_padding_train[pair_tensor==1]=1
+    pair_tensor_train[pair_padding_train == 0] = -100
     pair_tensor[pair_padding_tensor == 0] = -100
-    # print('number of -100', torch.sum(pair_tensor != -100))
+
+    # print('number of not -100', torch.sum(pair_tensor != -100),  torch.sum(pair_tensor_train != -100))
     # word_seq_tensor = word_seq_tensor.to(config.device)
     label_seq_tensor = label_seq_tensor.to(config.device)
     char_seq_tensor = char_seq_tensor.to(config.device)
@@ -169,7 +194,7 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
 
     pair_tensor = pair_tensor.to(config.device)
 
-    return sent_emb_tensor, type_id_tensor, sent_seq_len, num_tokens_tensor, initial_sent_emb_tensor, context_emb_tensor, char_seq_tensor, char_seq_len, label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor, pair_padding_tensor, max_review_tensor
+    return sent_emb_tensor, type_id_tensor, sent_seq_len, num_tokens_tensor, initial_sent_emb_tensor, context_emb_tensor, char_seq_tensor, char_seq_len, pair_tensor,pair_padding_tensor,  label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor_train, pair_padding_train, max_review_tensor
 
 
 def lr_decay(config, optimizer: optim.Optimizer, epoch: int) -> optim.Optimizer:

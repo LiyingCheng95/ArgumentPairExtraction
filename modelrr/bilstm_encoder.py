@@ -72,6 +72,8 @@ class BiLSTMEncoder(nn.Module):
                       batch_context_emb: torch.Tensor,
                       char_inputs: torch.Tensor,
                       char_seq_lens: torch.Tensor,
+                pairs_eval: torch.Tensor,
+                pair_padding_eval: torch.Tensor,
                       tags: torch.Tensor,
                       review_index: torch.Tensor,
                       reply_index: torch.Tensor,
