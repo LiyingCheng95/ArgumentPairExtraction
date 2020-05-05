@@ -163,19 +163,30 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     for idx in range(batch_size):
 
         for sent_idx in range(sent_seq_len[idx]):
-
-            if (tmp[idx,sent_idx,:]==1).sum()>=4:
-                valid_idx = (tmp[idx,sent_idx,:]==1).nonzero().view(-1)
+            if (tmp[idx, sent_idx, :] == 1).sum() >= 4:
+                valid_idx = (tmp[idx, sent_idx, :] == 1).nonzero().view(-1)
                 choice = torch.multinomial(valid_idx.float(), 4)
-                # print((tmp[idx, sent_idx, :] == 1).sum())
-                # print(valid_idx[choice])
-                pair_padding_train[idx,sent_idx, valid_idx[choice]]=1
+                pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
             else:
                 pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
-    # print(pair_padding_train.sum())
+
+            if (tmp[idx, sent_idx, :] == 0).sum() >= 2:
+                valid_idx = (tmp[idx, sent_idx, :] == 0).nonzero().view(-1)
+                choice = torch.multinomial(valid_idx.float(), 2)
+                pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
+            else:
+                pair_padding_train[idx, sent_idx, tmp[idx, sent_idx, :] == 0] = 1
+
+            # if (tmp[idx,sent_idx,:]==1).sum()>=5:
+            #     valid_idx = (tmp[idx,sent_idx,:]==1).nonzero().view(-1)
+            #     choice = torch.multinomial(valid_idx.float(), 5)
+            #     pair_padding_train[idx,sent_idx, valid_idx[choice]]=1
+            #
+            # else:
+            #     pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
 
 
-    pair_padding_train[pair_tensor==1]=1
+    pair_padding_train[pair_tensor == 1] = 1
     pair_tensor_train[pair_padding_train == 0] = -100
     pair_tensor[pair_padding_tensor == 0] = -100
 
@@ -193,6 +204,9 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     reply_idx_tensor = reply_idx_tensor.to(config.device)
 
     pair_tensor = pair_tensor.to(config.device)
+    pair_padding_tensor = pair_padding_tensor.to(config.device)
+    pair_padding_train = pair_padding_train.to(config.device)
+    pair_tensor_train = pair_tensor_train.to(config.device)
 
     return sent_emb_tensor, type_id_tensor, sent_seq_len, num_tokens_tensor, initial_sent_emb_tensor, context_emb_tensor, char_seq_tensor, char_seq_len, pair_tensor,pair_padding_tensor,  label_seq_tensor, review_idx_tensor, reply_idx_tensor, pair_tensor_train, pair_padding_train, max_review_tensor
 
