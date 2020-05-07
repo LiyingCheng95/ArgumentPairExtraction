@@ -234,6 +234,9 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
         batch_insts[idx].prediction = prediction
         # convert to span
 
+        pred2 = [0]*length
+        gold2 = [0]*length
+
         # gold
         output_spans = set()
         start = -1
@@ -287,11 +290,13 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                     arguments = j.type.split(' ')
                     # print('arguments',arguments)
                     # print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments) * (
-                            end + 1 - start):
+                    # if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments) * (end + 1 - start):
+                    # print(set(pair_index).intersection(set(arguments)),set(arguments))
+                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
                         reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                 pairs = ' '.join(str(e) for e in reply_pair_index)
                 output_spans.add(Span(start, end, pairs))
+                gold2[start:end+1] = pairs
 
             if output[i].startswith("S-"):
                 pair_index = [str(j) for j, e in enumerate(pair_gold1[i].tolist()) if e == 1]
@@ -301,10 +306,11 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                     arguments = j.type.split(' ')
                     # print('arguments',arguments)
                     # print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments):
+                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
                         reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                 pairs = ' '.join(str(e) for e in reply_pair_index)
                 output_spans.add(Span(i, i, pairs))
+                gold2[i] = pairs
                 # print('gold',pairs)
 
         # predict
@@ -323,12 +329,12 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                     arguments = j.type.split(' ')
                     print('arguments',arguments)
                     print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments) * (
-                                end + 1 - start):
+                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
                     # if len(set(arguments).intersection(set(pair_index))) > 0.5 * len(arguments):
                         reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                 pairs = ' '.join(str(e) for e in reply_pair_index)
                 predict_spans.add(Span(start, end, pairs))
+                pred2[start:end+1] = pairs
                 # print('pred', pairs)
             if prediction[i].startswith("S-"):
 
@@ -340,12 +346,15 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                     arguments = j.type.split(' ')
                     print('arguments_S',arguments)
                     print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments):
+                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
                     # if len(set(arguments).intersection(set(pair_index))) > 0.5 * len(arguments):
                         reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                 pairs = ' '.join(str(e) for e in reply_pair_index)
                 predict_spans.add(Span(i, i, pairs))
+                pred2[i] = pairs
                 # print('pred', pairs)
+        batch_insts[idx].gold2 = gold2
+        batch_insts[idx].pred2 = pred2
 
         # print('gold',output_spans)
         # print('pred',predict_spans)
