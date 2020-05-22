@@ -47,8 +47,9 @@ class Span_e2e:
         self.right = right
         self.type = type
 
-    def __eq__(self, other):
-        return self.left == other.left and self.right == other.right and self.type == other.type
+    # def __eq__(self, other):
+    #     # return self.left == other.left and self.right == other.right and self.type == other.type
+    #     return True
         # return self.left == other.left and self.right == other.right and ((self.type[self.type+other.type >= 0]) == (other.type[self.type+other.type >= 0])).all()
 
     def __hash__(self):
@@ -219,150 +220,162 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
     :return: numpy array containing (number of true positive, number of all positive, number of true positive + number of false negative)
              You can also refer as (number of correctly predicted entities, number of entities predicted, number of entities in the dataset)
     """
-    p = 0
-    total_entity = 0
-    total_predict = 0
+    percs = [0.9]
+    results = []
     word_seq_lens = word_seq_lens.tolist()
-    # print(num_review)
-    for idx in range(len(batch_pred_ids)):
-        length = word_seq_lens[idx]
-        output = batch_gold_ids[idx][:length].tolist()
-        prediction = batch_pred_ids[idx][:length].tolist()
-        prediction = prediction[::-1]
-        output = [idx2label[l] for l in output]
-        prediction = [idx2label[l] for l in prediction]
-        batch_insts[idx].prediction = prediction
-        # convert to span
+    for perc in percs:
+        p = 0
+        total_entity = 0
+        total_predict = 0
 
-        pred2 = [0]*length
-        gold2 = [0]*length
+        for idx in range(len(batch_pred_ids)):
+            length = word_seq_lens[idx]
+            output = batch_gold_ids[idx][:length].tolist()
+            # print('length',length,len(output))
+            prediction = batch_pred_ids[idx][:length].tolist()
+            prediction = prediction[::-1]
+            output = [idx2label[l] for l in output]
+            prediction = [idx2label[l] for l in prediction]
+            batch_insts[idx].prediction = prediction
+            # convert to span
 
-        # gold
-        output_spans = set()
-        start = -1
-        start_gold = -1
-        start_pred = -1
-        reply_gold_spans = set()
-        reply_pred_spans = set()
+            pred2 = [0]*length
+            gold2 = [0]*length
 
-        pair_gold1 = pair_gold[idx]
-        pair_pred1 = pair_predict[idx].squeeze(2)
-        for i in range(num_review[idx], len(output)):
-            # if pair_gold1[i] ==-100:
-            #     pair_gold1[i] = 0
+            # gold
+            output_spans = set()
+            start = -1
+            start_gold = -1
+            start_pred = -1
+            reply_gold_spans = set()
+            reply_pred_spans = set()
 
-            if output[i].startswith("O"):
-                pair_gold1[i] = -100
+            pair_gold1 = pair_gold[idx]
+            pair_pred1 = pair_predict[idx].squeeze(2)
+            for i in range(num_review[idx], len(output)):
+                # if pair_gold1[i] ==-100:
+                #     pair_gold1[i] = 0
 
-            if prediction[i].startswith("O"):
-                pair_pred1[i] = -100
+                if output[i].startswith("O"):
+                    pair_gold1[i] = -100
 
-
-            if output[i].startswith("B-"):
-                start_gold = i
-            if output[i].startswith("E-"):
-                end_gold = i
-                arguments = ' '.join(str(int(e)) for e in list(range(start_gold,end_gold+1)))
-                reply_gold_spans.add(Span_e2e(start_gold,end_gold,arguments))
-            if output[i].startswith("S-"):
-                reply_gold_spans.add(Span_e2e(i, i, str(i)))
+                if prediction[i].startswith("O"):
+                    pair_pred1[i] = -100
 
 
-            if prediction[i].startswith("B-"):
-                start_pred = i
-            if prediction[i].startswith("E-"):
-                end_pred = i
-                arguments = ' '.join(str(int(e)) for e in list(range(start_pred, end_pred+1)))
-                reply_pred_spans.add(Span_e2e(start_pred,end_pred,arguments))
-            if prediction[i].startswith("S-"):
-                reply_pred_spans.add(Span_e2e(i, i, str(i)))
+                if output[i].startswith("B-"):
+                    start_gold = i
+                if output[i].startswith("E-"):
+                    end_gold = i
+                    arguments = ' '.join(str(int(e)) for e in list(range(start_gold,end_gold+1)))
+                    reply_gold_spans.add(Span_e2e(start_gold,end_gold,arguments))
+                if output[i].startswith("S-"):
+                    reply_gold_spans.add(Span_e2e(i, i, str(i)))
 
-        for i in range(num_review[idx]):
-            if output[i].startswith("B-"):
-                start = i
-            if output[i].startswith("E-"):
-                end = i
-                pair_index = [str(j) for i1 in range(start, end+1) for j, e in enumerate(pair_gold1[i1].tolist()) if e == 1]
-                # print('pair_index',pair_index)
-                # pair_index = [j for j, e in enumerate(pair_gold1[start].tolist()) if e == 1]
-                reply_pair_index=[]
-                for j in reply_gold_spans:
-                    arguments = j.type.split(' ')
-                    # print('arguments',arguments)
-                    # print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    # if sum([1 for j1 in pair_index if j1 in arguments]) >= 0.5 * len(arguments) * (end + 1 - start):
-                    # print(set(pair_index).intersection(set(arguments)),set(arguments))
-                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
-                        reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
-                pairs = ' '.join(str(e) for e in reply_pair_index)
-                output_spans.add(Span(start, end, pairs))
-                gold2[start:end+1] = pairs
 
-            if output[i].startswith("S-"):
-                pair_index = [str(j) for j, e in enumerate(pair_gold1[i].tolist()) if e == 1]
-                # print('pair_index',pair_index)
-                reply_pair_index = []
-                for j in reply_gold_spans:
-                    arguments = j.type.split(' ')
-                    # print('arguments',arguments)
-                    # print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
-                        reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
-                pairs = ' '.join(str(e) for e in reply_pair_index)
-                output_spans.add(Span(i, i, pairs))
-                gold2[i] = pairs
-                # print('gold',pairs)
+                if prediction[i].startswith("B-"):
+                    start_pred = i
+                if prediction[i].startswith("E-"):
+                    end_pred = i
+                    arguments = ' '.join(str(int(e)) for e in list(range(start_pred, end_pred+1)))
+                    reply_pred_spans.add(Span_e2e(start_pred,end_pred,arguments))
+                if prediction[i].startswith("S-"):
+                    reply_pred_spans.add(Span_e2e(i, i, str(i)))
 
-        # predict
-        predict_spans = set()
-        for i in range(num_review[idx]):
-            if prediction[i].startswith("B-"):
-                start = i
-            if prediction[i].startswith("E-"):
-                end = i
-                # for review_argu_idx in range(start,end+1):
-                pair_index = [str(j) for i1 in range(start, end+1) for j, e in enumerate(pair_pred1[i1].tolist()) if e == 1]
-                print('pair_index',pair_index)
-                reply_pair_index = []
+            for i in range(num_review[idx]):
+                if output[i].startswith("B-"):
+                    start = i
+                if output[i].startswith("E-"):
+                    end = i
+                    pair_index = [str(j) for i1 in range(start, end+1) for j, e in enumerate(pair_gold1[i1].tolist()) if e == 1]
+                    # print('pair_index',pair_index)
+                    # pair_index = [j for j, e in enumerate(pair_gold1[start].tolist()) if e == 1]
+                    reply_pair_index=[]
+                    for j in reply_gold_spans:
+                        arguments = j.type.split(' ')
+                        # print('arguments',arguments)
+                        # print(sum([1 for j1 in pair_index if j1 in arguments]))
+                        if sum([1 for j1 in pair_index if j1 in arguments]) == len(arguments) * (end + 1 - start):
+                        # print(set(pair_index).intersection(set(arguments)),set(arguments))
+                        # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
+                            reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
+                    pairs = ' '.join(str(e) for e in reply_pair_index)
+                    if pairs != '':
+                        output_spans.add(Span(start, end, pairs))
+                    for review_idx in range(start, end + 1):
+                        gold2[review_idx] = pairs
 
-                for j in reply_pred_spans:
-                    arguments = j.type.split(' ')
-                    print('arguments',arguments)
-                    print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
-                    # if len(set(arguments).intersection(set(pair_index))) > 0.5 * len(arguments):
-                        reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
-                pairs = ' '.join(str(e) for e in reply_pair_index)
-                predict_spans.add(Span(start, end, pairs))
-                pred2[start:end+1] = pairs
-                # print('pred', pairs)
-            if prediction[i].startswith("S-"):
+                if output[i].startswith("S-"):
+                    pair_index = [str(j) for j, e in enumerate(pair_gold1[i].tolist()) if e == 1]
+                    # print('pair_index',pair_index)
+                    reply_pair_index = []
+                    for j in reply_gold_spans:
+                        arguments = j.type.split(' ')
+                        # print('arguments',arguments)
+                        # print(sum([1 for j1 in pair_index if j1 in arguments]))
+                        # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
+                        if sum([1 for j1 in pair_index if j1 in arguments]) == len(arguments):
+                            reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
+                    pairs = ' '.join(str(e) for e in reply_pair_index)
+                    if pairs != '':
+                        output_spans.add(Span(i, i, pairs))
+                    gold2[i] = pairs
+                    # print('gold',pairs)
 
-                pair_index = [str(j) for j, e in enumerate(pair_pred1[i].tolist()) if e == 1]
-                print('pair_index _S',pair_index)
+            # predict
+            predict_spans = set()
+            for i in range(num_review[idx]):
+                if prediction[i].startswith("B-"):
+                    start = i
+                if prediction[i].startswith("E-"):
+                    end = i
+                    # for review_argu_idx in range(start,end+1):
+                    pair_index = [str(j) for i1 in range(start, end+1) for j, e in enumerate(pair_pred1[i1].tolist()) if e == 1]
+                    # print('pair_index',pair_index)
+                    reply_pair_index = []
 
-                reply_pair_index = []
-                for j in reply_pred_spans:
-                    arguments = j.type.split(' ')
-                    print('arguments_S',arguments)
-                    print(sum([1 for j1 in pair_index if j1 in arguments]))
-                    if len(set(pair_index).intersection(set(arguments))) >= 0.6 * len(set(arguments)):
-                    # if len(set(arguments).intersection(set(pair_index))) > 0.5 * len(arguments):
-                        reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
-                pairs = ' '.join(str(e) for e in reply_pair_index)
-                predict_spans.add(Span(i, i, pairs))
-                pred2[i] = pairs
-                # print('pred', pairs)
-        batch_insts[idx].gold2 = gold2
-        batch_insts[idx].pred2 = pred2
+                    for j in reply_pred_spans:
+                        arguments = j.type.split(' ')
+                        # print('arguments',arguments)
+                        # print(sum([1 for j1 in pair_index if j1 in arguments]))
+                        # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
+                        if sum([1 for j1 in pair_index if j1 in arguments]) >= perc * len(arguments) * (end + 1 - start):
+                            reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
+                    pairs = ' '.join(str(e) for e in reply_pair_index)
+                    if pairs != '':
+                        predict_spans.add(Span(start, end, pairs))
+                    for review_idx in range(start,end+1):
+                        pred2[review_idx] = pairs
+                    # print('pred', pairs)
+                if prediction[i].startswith("S-"):
 
-        # print('gold',output_spans)
-        # print('pred',predict_spans)
-        total_entity += len(output_spans)
-        total_predict += len(predict_spans)
+                    pair_index = [str(j) for j, e in enumerate(pair_pred1[i].tolist()) if e == 1]
+                    # print('pair_index _S',pair_index)
 
-        p += len(predict_spans.intersection(output_spans))
-        # print(total_entity, total_predict, p)
+                    reply_pair_index = []
+                    for j in reply_pred_spans:
+                        arguments = j.type.split(' ')
+                        # print('arguments_S',arguments)
+                        # print(sum([1 for j1 in pair_index if j1 in arguments]))
+                        if sum([1 for j1 in pair_index if j1 in arguments]) >= perc * len(arguments):
+                        # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
+                            reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
+                    pairs = ' '.join(str(e) for e in reply_pair_index)
+                    if pairs!='':
+                        predict_spans.add(Span(i, i, pairs))
+                    pred2[i] = pairs
+                    # print('pred', pairs)
+            batch_insts[idx].gold2 = gold2
+            batch_insts[idx].pred2 = pred2
+
+            # print('gold',output_spans)
+            # print('pred',predict_spans)
+            total_entity += len(output_spans)
+            total_predict += len(predict_spans)
+
+            p += len(predict_spans.intersection(output_spans))
+            # print(total_entity, total_predict, p)
+        results.append(np.asarray([p, total_predict, total_entity], dtype=int))
 
 
     # In case you need the following code for calculating the p/r/f in a batch.
@@ -371,7 +384,8 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
     # recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0
     # fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
 
-    return np.asarray([p, total_predict, total_entity], dtype=int)
+    # return np.asarray([p, total_predict, total_entity], dtype=int)
+    return np.stack(results, axis=0)
 
 
 

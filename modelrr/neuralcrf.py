@@ -58,8 +58,8 @@ class NNCRF(nn.Module):
         unlabed_score, labeled_score, pair_loss =  self.inferencer(lstm_scores, pair_scores, sent_seq_lens, tags, mask, pairs,pair_padding)
         # print('unlabed_score:  ',unlabed_score.size(),unlabed_score)
         # print('labeled_score:  ',labeled_score.size(),labeled_score)
-        print('loss:', unlabed_score - labeled_score, pair_loss)
-        return (unlabed_score - labeled_score) + 2.0 * pair_loss
+        # print('loss:', unlabed_score - labeled_score, pair_loss)
+        return (unlabed_score - labeled_score) + 1.0 * pair_loss
         # return (unlabed_score - labeled_score)
         # return pair_loss
 

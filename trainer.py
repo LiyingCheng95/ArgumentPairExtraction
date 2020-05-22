@@ -14,6 +14,7 @@ import pickle
 import tarfile
 import shutil
 from tqdm import tqdm
+import sys
 
 def set_seed(opt, seed):
     random.seed(seed)
@@ -112,16 +113,16 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
         dev_metrics = evaluate_model(config, model, dev_batches, "dev", dev_insts)
         test_metrics = evaluate_model(config, model, test_batches, "test", test_insts)
         # print(test_insts.prediction)
-        if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-2] > best_dev[-1]): # task 1 & task 2
-        # if dev_metrics[-2] > best_dev[-1]: # task 2
+        # if dev_metrics[2] > best_dev[0] or (dev_metrics[2] == best_dev[0] and dev_metrics[-1] > best_dev[-1]): # task 1 & task 2
+        if np.max(dev_metrics[-1]) > best_dev[-1]: # task 2
         # if dev_metrics[2] > best_dev[0]: # task 1
             print("saving the best model...")
             no_incre_dev = 0
             best_dev[0] = dev_metrics[2]
-            best_dev[-1] = dev_metrics[-2]
+            best_dev[-1] = np.max(dev_metrics[-1])
             best_dev[1] = i
             best_test[0] = test_metrics[2]
-            best_test[-1] = test_metrics[-2]
+            best_test[-1] = np.max(test_metrics[-1])
             best_test[1] = i
             torch.save(model.state_dict(), model_path)
             # Save the corresponding config as well.
@@ -154,7 +155,8 @@ def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_ins
 def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, insts: List[Instance]):
     ## evaluation
     tp, fp, tn, fn = 0, 0, 0, 0
-    metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.asarray([0, 0, 0], dtype=int)
+    # metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.asarray([0, 0, 0], dtype=int)
+    metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.zeros((17, 3), dtype=int)
     pair_metrics = np.asarray([0, 0, 0], dtype=int)
     batch_idx = 0
     batch_size = config.batch_size
@@ -202,14 +204,17 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             # print('gold_id', gold_id, 'pred_id', pred_id, 'argu_id', argu_id)
 
             # print(pair_ids[batch_id].size(), batch[-3][batch_id].size())
-            one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
-            one_batch_insts[batch_id].gold2 = processed_batched_data[-3][batch_id]
+            # one_batch_insts[batch_id].gold2 = processed_batched_data[-8][batch_id]
+            # one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
+
 
             # print(one_batch_insts[batch_id].gold2)
             # print(torch.sum(one_batch_insts[batch_id].pred2, dim=1))
 
-            pred2 = one_batch_insts[batch_id].pred2[argu_id]
-            gold2 = one_batch_insts[batch_id].gold2[argu_id]
+            # pred2 = one_batch_insts[batch_id].pred2[argu_id]
+            pred2 = pair_ids[batch_id].squeeze(2)
+            # gold2 = one_batch_insts[batch_id].gold2[argu_id]
+            gold2 = processed_batched_data[-3][batch_id]
 
 
             # print('argu_id:  ',argu_id.size(),argu_id)
@@ -245,15 +250,27 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     recall = p * 1.0 / total_entity * 100 if total_entity != 0 else 0
     fscore = 2.0 * precision * recall / (precision + recall) if precision != 0 or recall != 0 else 0
 
-    p_e2e, total_predict_e2e, total_entity_e2e = metrics_e2e[0], metrics_e2e[1], metrics_e2e[2]
-    precision_e2e = p_e2e * 1.0 / total_predict_e2e * 100 if total_predict_e2e != 0 else 0
-    recall_e2e = p_e2e * 1.0 / total_entity_e2e * 100 if total_entity_e2e != 0 else 0
-    fscore_e2e = 2.0 * precision_e2e * recall_e2e / (precision_e2e + recall_e2e) if precision_e2e != 0 or recall_e2e != 0 else 0
+    p_e2e, total_predict_e2e, total_entity_e2e = metrics_e2e[:, 0], metrics_e2e[:, 1], metrics_e2e[:, 2]
+    # precision_e2e = p_e2e * 1.0 / total_predict_e2e * 100 if total_predict_e2e != 0 else 0
+    # recall_e2e = p_e2e * 1.0 / total_entity_e2e * 100 if total_entity_e2e != 0 else 0
+    # fscore_e2e = 2.0 * precision_e2e * recall_e2e / (precision_e2e + recall_e2e) if precision_e2e != 0 or recall_e2e != 0 else 0
+    total_predict_e2e[total_predict_e2e == 0] = sys.maxsize
+    total_entity_e2e[total_entity_e2e == 0] = sys.maxsize
+
+    precision_e2e = p_e2e * 1.0 / total_predict_e2e * 100
+    recall_e2e = p_e2e * 1.0 / total_entity_e2e * 100
+
+    sum_e2e = precision_e2e + recall_e2e
+    sum_e2e[sum_e2e == 0] = sys.maxsize
+    fscore_e2e = 2.0 * precision_e2e * recall_e2e / sum_e2e
+
 
 
     print("Task1: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
     print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f, acc: %.2f" % (name, precision_2, recall_2, f1_2, acc), flush=True)
-    print("Overall: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_e2e, recall_e2e, fscore_e2e), flush=True)
+    percs = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
+    for i in range(len(percs)):
+        print("Overall ", percs[i], ": [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_e2e[i], recall_e2e[i], fscore_e2e[i]), flush=True)
     return [precision, recall, fscore, precision_2, recall_2, f1_2, acc, precision_e2e, recall_e2e, fscore_e2e]
 
 
