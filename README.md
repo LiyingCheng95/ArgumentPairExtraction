@@ -39,4 +39,13 @@ pip install allennlp
 ## RR Dataset
 The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data).
 
+## Citation
+```
+@inproceedings{cheng2020ape,
+  title={APE: Argument Pair Extraction from Peer Review and Rebuttal via Multi-task Learning},
+  author={Cheng, Liying and Bing, Lidong and Qian, Yu and Lu, Wei and Si, Luo},
+  booktitle={Proceedings of EMNLP},
+  year={2020}
+}
+```
 
