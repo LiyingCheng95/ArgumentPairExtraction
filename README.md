@@ -37,6 +37,6 @@ pip install allennlp
 3. Change the `dataset` argument to `YourData` when you run `trainer.py`. 
 
 ## RR Dataset
-The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data/rr).
+The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data).
 
 
