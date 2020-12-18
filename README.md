@@ -37,6 +37,15 @@ pip install allennlp
 3. Change the `dataset` argument to `YourData` when you run `trainer.py`. 
 
 ## RR Dataset
-The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data/rr).
+The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data).
 
+## Citation
+```
+@inproceedings{cheng2020ape,
+  title={APE: Argument Pair Extraction from Peer Review and Rebuttal via Multi-task Learning},
+  author={Cheng, Liying and Bing, Lidong and Qian, Yu and Lu, Wei and Si, Luo},
+  booktitle={Proceedings of EMNLP},
+  year={2020}
+}
+```
 
