@@ -1,6 +1,3 @@
-# 
-# @author: Allan
-#
 
 from tqdm import tqdm
 from common import Sentence, Instance
@@ -43,7 +40,11 @@ class Reader:
             max_review_id=0
             new_index = 0
 
-            f= f.readlines()
+            f= f.readlines()[:50]
+            count_review = 0
+            count_reply = 0
+            argu_review = 0
+            argu_reply = 0
 
             for line_idx, line in enumerate(tqdm(f)):
                 line = line.rstrip()
@@ -53,8 +54,9 @@ class Reader:
                     # max_num_tokens = len(vecs[0])
                     num_tokens = [len(vecs[i]) for i in range(len(vecs))]
                     inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,num_tokens)
+                    # print(labels_pair)
                     ##read vector
-                    print(review_idx,reply_idx,max_review_id,labels_pair)
+                    # print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)
                     sents = []
                     ori_sents = []
@@ -76,39 +78,21 @@ class Reader:
 
                 ori_sents.append(sent)
                 if type == 'Review':
+                    count_review+=1
                     type_id = 0
                     if label[0] != 'O':
                         review_idx.append(sent_idx)
+                        argu_review+=1
                     # else:
                     #     review_idx.append(0)
                     max_review_id += 1
                 else:
+                    count_reply+=1
                     type_id = 1
                     # print(line_idx,len(f),f[line_idx+1])
-                    if line_idx<len(f)-2:
-                        if label[0] != 'O' or (label[0]=='O' and ( (new_index>0 and f[line_idx-1].rstrip().split('\t')[1][0] != 'O') or
-                                                               (new_index>1 and f[line_idx-2].rstrip().split('\t')[1][0] != 'O') or
-                                                               (f[line_idx+1]!='' and f[line_idx+1].rstrip().split('\t')[1][0] != 'O') or
-                                                               (f[line_idx+1]!='' and f[line_idx+2]!='' and f[line_idx+2].rstrip().split('\t')[1][0] != 'O' ))):
-                            reply_idx.append(sent_idx)
-                    elif line_idx==len(f)-2:
-                        if f[line_idx + 1].rstrip() != '':
-                            if label[0] != 'O' or (label[0] == 'O' and (
-                                    (new_index > 0 and f[line_idx - 1].rstrip().split('\t')[1][0] != 'O') or
-                                    (new_index > 1 and f[line_idx - 2].rstrip().split('\t')[1][0] != 'O') or
-                                    (f[line_idx + 1] != '' and f[line_idx + 1].rstrip().split('\t')[1][0] != 'O'))):
-                                reply_idx.append(sent_idx)
-                        else:
-                            if label[0] != 'O' or (label[0] == 'O' and (
-                                    (new_index > 0 and f[line_idx - 1].rstrip().split('\t')[1][0] != 'O') or
-                                    (new_index > 1 and f[line_idx - 2].rstrip().split('\t')[1][0] != 'O'))):
-                                reply_idx.append(sent_idx)
-
-
-                    elif line_idx==len(f)-1:
-                        if label[0] != 'O' or (label[0]=='O' and ( (new_index>0 and f[line_idx-1].rstrip().split('\t')[1][0] != 'O') or
-                                                               (new_index>1 and f[line_idx-2].rstrip().split('\t')[1][0] != 'O'))):
-                            reply_idx.append(sent_idx)
+                    reply_idx.append(sent_idx)
+                    if label[0] != 'O':
+                        argu_reply+=1
 
 
                 types.append(type_id)
@@ -128,6 +112,7 @@ class Reader:
 
                 labels.append(label)
                 labels_pair.append(label_pair)
+        print('review, reply, review_argu, reply_argu',count_review,count_reply,argu_review,argu_reply)
         print("number of sentences: {}".format(len(insts)))
         all_vecs = 0
         vecs = 0

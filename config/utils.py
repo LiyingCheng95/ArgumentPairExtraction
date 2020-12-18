@@ -163,27 +163,18 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     for idx in range(batch_size):
 
         for sent_idx in range(sent_seq_len[idx]):
-            if (tmp[idx, sent_idx, :] == 1).sum() >= 4:
+            if (tmp[idx, sent_idx, :] == 1).sum() >= 5:
                 valid_idx = (tmp[idx, sent_idx, :] == 1).nonzero().view(-1)
-                choice = torch.multinomial(valid_idx.float(), 4)
+                choice = torch.multinomial(valid_idx.float(), 5)
                 pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
             else:
                 pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
-
-            if (tmp[idx, sent_idx, :] == 0).sum() >= 2:
+            if (tmp[idx, sent_idx, :] == 0).sum() >= 1:
                 valid_idx = (tmp[idx, sent_idx, :] == 0).nonzero().view(-1)
-                choice = torch.multinomial(valid_idx.float(), 2)
+                choice = torch.multinomial(valid_idx.float(), 1)
                 pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
-            else:
-                pair_padding_train[idx, sent_idx, tmp[idx, sent_idx, :] == 0] = 1
 
-            # if (tmp[idx,sent_idx,:]==1).sum()>=5:
-            #     valid_idx = (tmp[idx,sent_idx,:]==1).nonzero().view(-1)
-            #     choice = torch.multinomial(valid_idx.float(), 5)
-            #     pair_padding_train[idx,sent_idx, valid_idx[choice]]=1
-            #
-            # else:
-            #     pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
+
 
 
     pair_padding_train[pair_tensor == 1] = 1
