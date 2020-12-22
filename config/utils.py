@@ -135,7 +135,8 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
                             and batch_data[idx].type[sent_idx] == 0 and batch_data[idx].type[sent_idx2] == 1:
                         pair_tensor[idx,sent_idx,sent_idx2]=1.0
                         pair_tensor_train[idx, sent_idx, sent_idx2] = 1.0
-                    # if batch_data[idx].type[sent_idx]==0 and batch_data[idx].type[sent_idx2]==1:
+                    #if batch_data[idx].type[sent_idx]==0 and batch_data[idx].type[sent_idx2]==1:
+                    #    pair_padding_train[idx, sent_idx, sent_idx2] = 1.0
                     if batch_data[idx].labels_pair[sent_idx] != 0 and batch_data[idx].labels_pair[sent_idx2] != 0 \
                             and batch_data[idx].type[sent_idx] == 0 and batch_data[idx].type[sent_idx2] == 1:
                         pair_padding_tensor[idx,sent_idx,sent_idx2]=1.0
@@ -163,18 +164,21 @@ def simple_batching(config, insts: List[Instance]) -> Tuple[torch.Tensor,torch.T
     for idx in range(batch_size):
 
         for sent_idx in range(sent_seq_len[idx]):
+            # pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
+
             if (tmp[idx, sent_idx, :] == 1).sum() >= 5:
                 valid_idx = (tmp[idx, sent_idx, :] == 1).nonzero().view(-1)
                 choice = torch.multinomial(valid_idx.float(), 5)
                 pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
             else:
                 pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==1] =1
-            if (tmp[idx, sent_idx, :] == 0).sum() >= 1:
-                valid_idx = (tmp[idx, sent_idx, :] == 0).nonzero().view(-1)
-                choice = torch.multinomial(valid_idx.float(), 1)
-                pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
-
-
+            
+            #if (tmp[idx, sent_idx, :] == 0).sum() >= 1:
+            #    valid_idx = (tmp[idx, sent_idx, :] == 0).nonzero().view(-1)
+            #    choice = torch.multinomial(valid_idx.float(), 1)
+            #    pair_padding_train[idx, sent_idx, valid_idx[choice]] = 1
+            #else:
+            #    pair_padding_train[idx, sent_idx,tmp[idx,sent_idx,:]==0] =1
 
 
     pair_padding_train[pair_tensor == 1] = 1

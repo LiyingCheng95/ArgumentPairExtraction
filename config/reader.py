@@ -1,8 +1,11 @@
+# 
+# @author: Allan
+#
 
 from tqdm import tqdm
 from common import Sentence, Instance
 from typing import List
-from bert_serving.client import BertClient
+# from bert_serving.client import BertClient
 import re
 import pickle
 
@@ -23,7 +26,8 @@ class Reader:
         insts = []
 
         # f_vec = open(file[:8]+'vec_test.pkl', 'rb')
-        f_vec = open(file[:8] + 'vec_' + file[8:-3] + 'pkl', 'rb')
+        f_vec = open(file[:9] + 'vec_' + file[9:-4] + '.pkl', 'rb')
+        print(file[:8] + 'vec_' + file[8:-4] + '.pkl')
         all_vecs = pickle.load(f_vec)
         f_vec.close
 
@@ -40,9 +44,11 @@ class Reader:
             max_review_id=0
             new_index = 0
 
-            f= f.readlines()[:50]
+            f= f.readlines()
             count_review = 0
             count_reply = 0
+            argu_sent_review = 0
+            argu_sent_reply = 0
             argu_review = 0
             argu_reply = 0
 
@@ -54,7 +60,6 @@ class Reader:
                     # max_num_tokens = len(vecs[0])
                     num_tokens = [len(vecs[i]) for i in range(len(vecs))]
                     inst = Instance(Sentence(sents, ori_sents), labels, vecs, types, review_idx, reply_idx, labels_pair, max_review_id,num_tokens)
-                    # print(labels_pair)
                     ##read vector
                     # print(review_idx,reply_idx,max_review_id,labels_pair)
                     insts.append(inst)
@@ -72,9 +77,9 @@ class Reader:
                     continue
                 ls = line.split('\t')
                 if ls[1]=='O':
-                    sent, label, label_pair, type = ls[0], ls[1], 0, ls[-1]
+                    sent, label, label_pair, type = ls[0], ls[1], 0, ls[-2]
                 else:
-                    sent, label, label_pair, type = ls[0], ls[1][:2] + '0', int(ls[2][2:]), ls[-1]
+                    sent, label, label_pair, type = ls[0], ls[1][:2] + '0', int(ls[2][2:]), ls[-2]
 
                 ori_sents.append(sent)
                 if type == 'Review':
@@ -82,18 +87,20 @@ class Reader:
                     type_id = 0
                     if label[0] != 'O':
                         review_idx.append(sent_idx)
+                        argu_sent_review+=1
+                    if label[0] == 'B':
                         argu_review+=1
                     # else:
                     #     review_idx.append(0)
                     max_review_id += 1
                 else:
-                    count_reply+=1
                     type_id = 1
-                    # print(line_idx,len(f),f[line_idx+1])
+                    count_reply+=1
                     reply_idx.append(sent_idx)
                     if label[0] != 'O':
+                        argu_sent_reply+=1
+                    if label[0] == 'B':
                         argu_reply+=1
-
 
                 types.append(type_id)
 
@@ -112,7 +119,7 @@ class Reader:
 
                 labels.append(label)
                 labels_pair.append(label_pair)
-        print('review, reply, review_argu, reply_argu',count_review,count_reply,argu_review,argu_reply)
+        print('review, reply, review_argu, reply_argu, review_sent_argu, reply_sent_argu',count_review,count_reply,argu_review,argu_reply,argu_sent_review, argu_sent_reply)
         print("number of sentences: {}".format(len(insts)))
         all_vecs = 0
         vecs = 0

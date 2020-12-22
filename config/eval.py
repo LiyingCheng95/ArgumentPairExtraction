@@ -220,6 +220,7 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
     :return: numpy array containing (number of true positive, number of all positive, number of true positive + number of false negative)
              You can also refer as (number of correctly predicted entities, number of entities predicted, number of entities in the dataset)
     """
+    #percs = [0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9]
     percs = [0.9]
     results = []
     word_seq_lens = word_seq_lens.tolist()
@@ -300,8 +301,8 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                         # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
                             reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                     pairs = ' '.join(str(e) for e in reply_pair_index)
-                    if pairs != '':
-                        output_spans.add(Span(start, end, pairs))
+                    # if pairs != '':
+                    output_spans.add(Span(start, end, pairs))
                     for review_idx in range(start, end + 1):
                         gold2[review_idx] = pairs
 
@@ -317,8 +318,8 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                         if sum([1 for j1 in pair_index if j1 in arguments]) == len(arguments):
                             reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                     pairs = ' '.join(str(e) for e in reply_pair_index)
-                    if pairs != '':
-                        output_spans.add(Span(i, i, pairs))
+                    # if pairs != '':
+                    output_spans.add(Span(i, i, pairs))
                     gold2[i] = pairs
                     # print('gold',pairs)
 
@@ -342,8 +343,8 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                         if sum([1 for j1 in pair_index if j1 in arguments]) >= perc * len(arguments) * (end + 1 - start):
                             reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                     pairs = ' '.join(str(e) for e in reply_pair_index)
-                    if pairs != '':
-                        predict_spans.add(Span(start, end, pairs))
+                    # if pairs != '':
+                    predict_spans.add(Span(start, end, pairs))
                     for review_idx in range(start,end+1):
                         pred2[review_idx] = pairs
                     # print('pred', pairs)
@@ -361,12 +362,12 @@ def evaluate_batch_insts_e2e(batch_insts: List[Instance],
                         # if len(set(pair_index).intersection(set(arguments))) >= perc * len(set(arguments)):
                             reply_pair_index.append('|'.join([str(j.left),str(j.right)]))
                     pairs = ' '.join(str(e) for e in reply_pair_index)
-                    if pairs!='':
-                        predict_spans.add(Span(i, i, pairs))
+                    # if pairs!='':
+                    predict_spans.add(Span(i, i, pairs))
                     pred2[i] = pairs
                     # print('pred', pairs)
-            batch_insts[idx].gold2 = gold2
-            batch_insts[idx].pred2 = pred2
+    #        batch_insts[idx].gold2 = gold2
+    #        batch_insts[idx].pred2 = pred2
 
             # print('gold',output_spans)
             # print('pred',predict_spans)

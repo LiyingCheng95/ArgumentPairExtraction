@@ -41,7 +41,7 @@ class BiLSTMEncoder(nn.Module):
             print("[Model Info] Input size to LSTM: {}".format(self.input_size))
             print("[Model Info] LSTM Hidden Size: {}".format(config.hidden_dim))
 
-        self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=self.num_layers, batch_first=True, bidirectional=True).to(self.device)
+        self.lstm = nn.LSTM(self.input_size, config.hidden_dim // 2, num_layers=2, batch_first=True, bidirectional=True).to(self.device)
         self.lstm_token = nn.LSTM(input_size=768, hidden_size=768 // 2, num_layers=self.num_layers, batch_first=True,
                             bidirectional=True).to(self.device)
 
@@ -56,9 +56,13 @@ class BiLSTMEncoder(nn.Module):
 
         self.pair2score_first = nn.Linear(final_hidden_dim, 100).to(self.device)
         self.pair2score_second = nn.Linear(100, 50).to(self.device)
+        #self.pair2score4 = nn.Linear(50, 10).to(self.device)
         self.pair2score_final = nn.Linear(50, 2).to(self.device)
 
+        self.pair2score_first2 = nn.Linear(final_hidden_dim, 100).to(self.device)
+        self.pair2score_second2 = nn.Linear(100, 2).to(self.device)
 
+        self.pair2score_first1 = nn.Linear(final_hidden_dim, 2).to(self.device)
 
 
 
@@ -186,12 +190,14 @@ class BiLSTMEncoder(nn.Module):
 
         lstm_review_rep = lstm_review_rep.unsqueeze(2).expand(batch_size,max_review,max_reply,hidden_dim)
         lstm_reply_rep = lstm_reply_rep.unsqueeze(1).expand(batch_size,max_review,max_reply,hidden_dim)
-        # lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
+        #lstm_pair_rep = torch.cat([lstm_review_rep, lstm_reply_rep], dim=-1)
         lstm_pair_rep = lstm_review_rep + lstm_reply_rep
 
         y = self.pair2score_first(lstm_pair_rep)
         y = F.relu(y)
         y = self.pair2score_second(y)
+        #y = F.relu(y)
+        #y = self.pair2score4(y)
         y = F.relu(y)
         score = self.pair2score_final(y)
 

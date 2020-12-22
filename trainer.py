@@ -28,7 +28,7 @@ def set_seed(opt, seed):
 
 def parse_arguments(parser):
     ###Training Hyperparameters
-    parser.add_argument('--device', type=str, default="cpu", choices=['cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3'],
+    parser.add_argument('--device', type=str, default="cpu", choices=['cuda:4','cpu', 'cuda:0', 'cuda:1', 'cuda:2', 'cuda:3'],
                         help="GPU/CPU devices")
     parser.add_argument('--seed', type=int, default=42, help="random seed")
     parser.add_argument('--digit2zero', action="store_true", default=True,
@@ -43,11 +43,11 @@ def parse_arguments(parser):
     parser.add_argument('--l2', type=float, default=1e-8)
     parser.add_argument('--lr_decay', type=float, default=0)
     parser.add_argument('--batch_size', type=int, default=10, help="default batch size is 10 (works well)")
-    parser.add_argument('--num_epochs', type=int, default=200, help="Usually we set to 10.")
+    parser.add_argument('--num_epochs', type=int, default=50, help="Usually we set to 10.")
     parser.add_argument('--train_num', type=int, default=-1, help="-1 means all the data")
     parser.add_argument('--dev_num', type=int, default=-1, help="-1 means all the data")
     parser.add_argument('--test_num', type=int, default=-1, help="-1 means all the data")
-    parser.add_argument('--max_no_incre', type=int, default=100, help="early stop when there is n epoch not increasing on dev")
+    parser.add_argument('--max_no_incre', type=int, default=20, help="early stop when there is n epoch not increasing on dev")
 
     ##model hyperparameter
     parser.add_argument('--model_folder', type=str, default="english_model", help="The name to save the model files")
@@ -65,6 +65,13 @@ def parse_arguments(parser):
 
 def train_model(config: Config, epoch: int, train_insts: List[Instance], dev_insts: List[Instance], test_insts: List[Instance]):
     model = NNCRF(config)
+    num_param=0
+    for idx in list(model.parameters()):
+        try:
+            num_param+=idx.size()[0]*idx.size()[1]
+        except:
+            num_param+=idx.size()[0]
+    print(num_param)
     optimizer = get_optimizer(config, model)
     train_num = len(train_insts)
     print("number of instances: %d" % (train_num))
@@ -156,7 +163,7 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     ## evaluation
     tp, fp, tn, fn = 0, 0, 0, 0
     # metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.asarray([0, 0, 0], dtype=int)
-    metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.zeros((17, 3), dtype=int)
+    metrics, metrics_e2e = np.asarray([0, 0, 0], dtype=int), np.zeros((1, 3), dtype=int)
     pair_metrics = np.asarray([0, 0, 0], dtype=int)
     batch_idx = 0
     batch_size = config.batch_size
@@ -204,8 +211,8 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
             # print('gold_id', gold_id, 'pred_id', pred_id, 'argu_id', argu_id)
 
             # print(pair_ids[batch_id].size(), batch[-3][batch_id].size())
-            # one_batch_insts[batch_id].gold2 = processed_batched_data[-8][batch_id]
-            # one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2)
+            one_batch_insts[batch_id].gold2 = processed_batched_data[-3][batch_id].tolist()
+            one_batch_insts[batch_id].pred2 = pair_ids[batch_id].squeeze(2).tolist()
 
 
             # print(one_batch_insts[batch_id].gold2)
@@ -264,11 +271,13 @@ def evaluate_model(config: Config, model: NNCRF, batch_insts_ids, name: str, ins
     sum_e2e[sum_e2e == 0] = sys.maxsize
     fscore_e2e = 2.0 * precision_e2e * recall_e2e / sum_e2e
 
-
+    print("Task1: ", p, total_predict, total_entity)
+    # print("Overall: ", p_e2e, total_predict_e2e, total_entity_e2e)
 
     print("Task1: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision, recall, fscore), flush=True)
     print("Task2: [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f, acc: %.2f" % (name, precision_2, recall_2, f1_2, acc), flush=True)
-    percs = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
+    percs=[0.9]
+    #percs = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
     for i in range(len(percs)):
         print("Overall ", percs[i], ": [%s set] Precision: %.2f, Recall: %.2f, F1: %.2f" % (name, precision_e2e[i], recall_e2e[i], fscore_e2e[i]), flush=True)
     return [precision, recall, fscore, precision_2, recall_2, f1_2, acc, precision_e2e, recall_e2e, fscore_e2e]
