@@ -29,9 +29,6 @@ Run ```../data_processing/dataProcessing.py```.
 
 Now you will get ```vec_train.pkl```, ```vec_dev.pkl```, ```vec_test.pkl```.
 
-## Data Access
-Kindly drop me an email (liying.cheng@alibaba-inc.com) to access the data.
-
 ## Citation
 ```
 @inproceedings{cheng2020ape,
