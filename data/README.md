@@ -3,13 +3,15 @@
 ## RR-passage
 In RR-passage dataset, all argument pairs from the same passage pair are put into only one of the training, development and testing sets. 
 
-## RR-submission & RR-submission-v2
+## RR-submission
 However, different review-rebuttal passage pairs of the same submission could be put into different sets.
 Since different reviewers may discuss similar issues for one submission, different review-rebuttal passage pairs of the same submission may share similar context information.
 To alleviate this effect, we also prepare another dataset version split on the submission level, namely RR-submission.
 In RR-submission, multiple review-rebuttal passage pairs of the same submission are in the same set.
 
-In our [ACL 2021's work](https://aclanthology.org/2021.acl-long.496.pdf), we further modify the RR-Submission dataset by fixing some minor bugs in the labels, and name it RR-Submission-v2. We suggest to use RR-submission-v2 in the future.
+## RR-submission-v2
+In our [ACL 2021's work](https://aclanthology.org/2021.acl-long.496.pdf), we further modify the RR-Submission dataset by fixing some minor bugs in the labels, and name it RR-Submission-v2.
+#### We suggest to use RR-submission-v2 in the future.
 
 
 ## Citation
