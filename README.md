@@ -36,8 +36,29 @@ pip install allennlp
 2. Put the `train.txt`, `dev.txt` and `test.txt` files (make sure the format is compatible, i.e. the first column is words and the last column are tags) under this directory.  If you have a different format, simply modify the reader in `config/reader.py`. 
 3. Change the `dataset` argument to `YourData` when you run `trainer.py`. 
 
-## RR Dataset
-The preprocessed RR dataset is saved in `./data`. For more details regarding the data preparation step, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data).
+## Data Preparation
+The preprocessed RR dataset is saved in `./data`. For more details regarding the dataset, please refer to [RR](https://github.com/LiyingCheng95/ArgumentPairExtraction/tree/master/data).
+
+### Data Processing
+To process the data, we adopt [bert-as-service](https://github.com/hanxiao/bert-as-service) as a tool to obtain the embeddings for all tokens [x0, x1, · · · , xT −1] in the sentence.
+
+#### Install
+```
+pip install bert-serving-server  # server
+pip install bert-serving-client  # client, independent of `bert-serving-server`
+```
+
+#### Download a pre-trained BERT model
+e.g. Download a [model](https://storage.googleapis.com/bert_models/2018_10_18/cased_L-12_H-768_A-12.zip), then uncompress the zip file into some folder, say ```/tmp/english_L-12_H-768_A-12/```
+
+#### Start the BERT service
+```bert-serving-start -model_dir /tmp/english_L-12_H-768_A-12/ -max_seq_len NONE -pooling_strategy NONE```
+
+#### Use Client to Get Sentence Encodes
+Run ```../data_processing/dataProcessing.py```.
+
+Now you will get ```vec_train.pkl```, ```vec_dev.pkl```, ```vec_test.pkl```.
+
 
 ## Citation
 ```
