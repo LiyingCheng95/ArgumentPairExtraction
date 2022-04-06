@@ -3,7 +3,7 @@
 ## RR-passage
 In RR-passage dataset, all argument pairs from the same passage pair are put into only one of the training, development and testing sets. 
 
-## RR-submission-v2
+## RR-submission & RR-submission-v2
 However, different review-rebuttal passage pairs of the same submission could be put into different sets.
 Since different reviewers may discuss similar issues for one submission, different review-rebuttal passage pairs of the same submission may share similar context information.
 To alleviate this effect, we also prepare another dataset version split on the submission level, namely RR-submission.
@@ -11,25 +11,6 @@ In RR-submission, multiple review-rebuttal passage pairs of the same submission 
 
 In our [ACL 2021's work](https://aclanthology.org/2021.acl-long.496.pdf), we further modify the RR-Submission dataset by fixing some minor bugs in the labels, and name it RR-Submission-v2. We suggest to use RR-submission-v2 in the future.
 
-### Data Processing
-To process the data, we adopt [bert-as-service](https://github.com/hanxiao/bert-as-service) as a tool to obtain the embeddings for all tokens [x0, x1, · · · , xT −1] in the sentence.
-
-#### Install
-```
-pip install bert-serving-server  # server
-pip install bert-serving-client  # client, independent of `bert-serving-server`
-```
-
-#### Download a pre-trained BERT model
-e.g. Download a [model](https://storage.googleapis.com/bert_models/2018_10_18/cased_L-12_H-768_A-12.zip), then uncompress the zip file into some folder, say ```/tmp/english_L-12_H-768_A-12/```
-
-#### Start the BERT service
-```bert-serving-start -model_dir /tmp/english_L-12_H-768_A-12/ -max_seq_len NONE -pooling_strategy NONE```
-
-#### Use Client to Get Sentence Encodes
-Run ```../data_processing/dataProcessing.py```.
-
-Now you will get ```vec_train.pkl```, ```vec_dev.pkl```, ```vec_test.pkl```.
 
 ## Citation
 ```
