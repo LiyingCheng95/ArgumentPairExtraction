@@ -13,6 +13,13 @@ In RR-submission, multiple review-rebuttal passage pairs of the same submission 
 In our [ACL 2021's work](https://aclanthology.org/2021.acl-long.496.pdf), we further modify the RR-Submission dataset by fixing some minor bugs in the labels, and name it RR-Submission-v2.
 #### We suggest to use RR-submission-v2 in the future.
 
+In ```train/dev/test.txt```, each line has 5 columns separate by ```\t```, as listed below:
+* sentence
+* B-Review / I-Review / B-Reply / I-Reply / O
+* B-index / I-index / O
+* Review / Reply
+* Submission ID: defined by ourselves, not original ID from openreview
+
 
 ## Citation
 ```
