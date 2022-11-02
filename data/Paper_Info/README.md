@@ -12,4 +12,4 @@ To map these 2 files, simply map on both the year and the ID.
 
 Through this mapping process, we manually found 3 instances in our original dataset that are not official review-rebuttal passage pairs. We removed them in the files here. Now, there are 4760 passage pairs.
 
-Let me know if you find any error in the current mapping, and if you want more information about the paper! We do have other information such as paper link on openreview / final decision / rating score, just need some time to compile those information :)
+Let me know if you find any error in the current mapping, and if you want more information! We do have other information such as paper link on openreview / final decision / rating score / etc. as mentioned in our [paper](https://aclanthology.org/2020.emnlp-main.569.pdf), it just takes some time to compile those information :)
